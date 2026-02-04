@@ -45,6 +45,7 @@ const APCL_FIELDS = [
   { key: "tratativa", label: "Tratativa", type: "string" },
   { key: "cod", label: "Código", type: "number" },
   { key: "equipe", label: "Equipe", type: "string" },
+  { key: "conclusao", label: "Conclusão", type: "string" },
   { key: "devolutiva", label: "Devolutiva", type: "string" },
   { key: "observacoes", label: "Observações", type: "string" },
 ];

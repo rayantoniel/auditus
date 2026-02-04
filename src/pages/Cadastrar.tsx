@@ -42,6 +42,7 @@ export default function Cadastrar() {
     equipe: "",
     tratativa: "",
     cod: "",
+    conclusao: "",
     observacoes: "",
   });
 
@@ -99,6 +100,7 @@ export default function Cadastrar() {
         equipe: apclForm.equipe || null,
         tratativa: apclForm.tratativa || null,
         cod: apclForm.cod ? parseInt(apclForm.cod) : null,
+        conclusao: apclForm.conclusao || null,
         observacoes: apclForm.observacoes || null,
       });
       if (error) throw error;
@@ -119,6 +121,7 @@ export default function Cadastrar() {
         equipe: "",
         tratativa: "",
         cod: "",
+        conclusao: "",
         observacoes: "",
       });
     },
@@ -396,14 +399,25 @@ export default function Cadastrar() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="tratativa">Tratativa</Label>
-                      <Input
-                        id="tratativa"
-                        placeholder="Tratativa aplicada"
-                        value={apclForm.tratativa}
-                        onChange={(e) => setAPCLForm({ ...apclForm, tratativa: e.target.value })}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tratativa">Tratativa</Label>
+                        <Input
+                          id="tratativa"
+                          placeholder="Tratativa aplicada"
+                          value={apclForm.tratativa}
+                          onChange={(e) => setAPCLForm({ ...apclForm, tratativa: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="conclusao_apcl">Conclusão</Label>
+                        <Input
+                          id="conclusao_apcl"
+                          placeholder="Conclusão da APCL"
+                          value={apclForm.conclusao}
+                          onChange={(e) => setAPCLForm({ ...apclForm, conclusao: e.target.value })}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">

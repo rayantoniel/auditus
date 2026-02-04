@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -27,6 +28,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Search, Archive, RotateCcw, Eye, CheckCircle } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { EditableCell } from "@/components/table/EditableCell";
 
 type Reclamacao = Tables<"reclamacoes">;
 
@@ -46,6 +48,27 @@ export default function Reclamacoes() {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: string; value: unknown }) => {
+      const { error } = await supabase
+        .from("reclamacoes")
+        .update({ [field]: value })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reclamacoes"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o campo.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -78,6 +101,10 @@ export default function Reclamacoes() {
     },
   });
 
+  const handleCellUpdate = async (id: string, field: string, value: unknown) => {
+    await updateMutation.mutateAsync({ id, field, value });
+  };
+
   const ativas = reclamacoes.filter(r => !r.arquivada);
   const arquivadas = reclamacoes.filter(r => r.arquivada);
 
@@ -88,7 +115,8 @@ export default function Reclamacoes() {
       r.cidade?.toLowerCase().includes(searchLower) ||
       r.instalacao?.toString().includes(search) ||
       r.equipe_responsavel?.toLowerCase().includes(searchLower) ||
-      r.tipo_reclamacao?.toLowerCase().includes(searchLower)
+      r.tipo_reclamacao?.toLowerCase().includes(searchLower) ||
+      r.conclusao?.toLowerCase().includes(searchLower)
     );
   };
 
@@ -99,85 +127,144 @@ export default function Reclamacoes() {
 
   const ReclamacaoTable = ({ data }: { data: Reclamacao[] }) => (
     <div className="rounded-lg border bg-card overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead>Nota RC</TableHead>
-            <TableHead>Nota FS</TableHead>
-            <TableHead>Instalação</TableHead>
-            <TableHead>Prazo</TableHead>
-            <TableHead>Cidade</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Respondido em</TableHead>
-            <TableHead>Equipe</TableHead>
-            <TableHead>Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                Nenhuma reclamação encontrada
-              </TableCell>
+      <ScrollArea className="w-full">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="min-w-[80px]">Nota RC</TableHead>
+              <TableHead className="min-w-[80px]">Nota FS</TableHead>
+              <TableHead className="min-w-[100px]">Instalação</TableHead>
+              <TableHead className="min-w-[120px]">Prazo</TableHead>
+              <TableHead className="min-w-[120px]">Cidade</TableHead>
+              <TableHead className="min-w-[150px]">Tipo</TableHead>
+              <TableHead className="min-w-[150px]">Conclusão</TableHead>
+              <TableHead className="min-w-[120px]">Respondido em</TableHead>
+              <TableHead className="min-w-[120px]">Data Visita</TableHead>
+              <TableHead className="min-w-[120px]">Equipe</TableHead>
+              <TableHead className="min-w-[200px]">Observações</TableHead>
+              <TableHead className="min-w-[80px]">Ações</TableHead>
             </TableRow>
-          ) : (
-            data.map((reclamacao) => (
-              <TableRow key={reclamacao.id} className="hover:bg-muted/30">
-                <TableCell className="font-mono">{reclamacao.nota_rc || "-"}</TableCell>
-                <TableCell className="font-mono">{reclamacao.nota_fs || "-"}</TableCell>
-                <TableCell className="font-mono font-medium">{reclamacao.instalacao || "-"}</TableCell>
-                <TableCell>{formatDate(reclamacao.prazo)}</TableCell>
-                <TableCell>{reclamacao.cidade || "-"}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{reclamacao.tipo_reclamacao || "-"}</Badge>
-                </TableCell>
-                <TableCell>
-                  {reclamacao.respondido_em ? (
-                    <span className="badge-success">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      {formatDate(reclamacao.respondido_em)}
-                    </span>
-                  ) : (
-                    <span className="badge-warning">Pendente</span>
-                  )}
-                </TableCell>
-                <TableCell>{reclamacao.equipe_responsavel || "-"}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setSelectedReclamacao(reclamacao);
-                        setShowDetails(true);
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    {reclamacao.arquivada ? (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => archiveMutation.mutate({ id: reclamacao.id, arquivada: false })}
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => archiveMutation.mutate({ id: reclamacao.id, arquivada: true })}
-                      >
-                        <Archive className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+          </TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                  Nenhuma reclamação encontrada
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              data.map((reclamacao) => (
+                <TableRow key={reclamacao.id} className="hover:bg-muted/30">
+                  <TableCell className="font-mono">
+                    <EditableCell
+                      value={reclamacao.nota_rc}
+                      type="number"
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "nota_rc", v)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    <EditableCell
+                      value={reclamacao.nota_fs}
+                      type="number"
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "nota_fs", v)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-mono font-medium">
+                    <EditableCell
+                      value={reclamacao.instalacao}
+                      type="number"
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "instalacao", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.prazo}
+                      type="date"
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "prazo", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.cidade}
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "cidade", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.tipo_reclamacao}
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "tipo_reclamacao", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.conclusao}
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "conclusao", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.respondido_em}
+                      type="date"
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "respondido_em", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.data_visita}
+                      type="date"
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "data_visita", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.equipe_responsavel}
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "equipe_responsavel", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.observacoes}
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "observacoes", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedReclamacao(reclamacao);
+                          setShowDetails(true);
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      {reclamacao.arquivada ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => archiveMutation.mutate({ id: reclamacao.id, arquivada: false })}
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => archiveMutation.mutate({ id: reclamacao.id, arquivada: true })}
+                        >
+                          <Archive className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   );
 
@@ -189,7 +276,7 @@ export default function Reclamacoes() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Reclamações</h1>
             <p className="text-muted-foreground mt-1">
-              Gerencie todas as reclamações do sistema
+              Gerencie todas as reclamações do sistema • Clique em qualquer célula para editar
             </p>
           </div>
           <div className="relative w-full md:w-72">
