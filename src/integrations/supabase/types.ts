@@ -19,6 +19,7 @@ export type Database = {
           arquivada: boolean
           cidade: string | null
           cod: number | null
+          conclusao: string | null
           created_at: string
           data_visita: string | null
           devolutiva: string | null
@@ -39,6 +40,7 @@ export type Database = {
           arquivada?: boolean
           cidade?: string | null
           cod?: number | null
+          conclusao?: string | null
           created_at?: string
           data_visita?: string | null
           devolutiva?: string | null
@@ -59,6 +61,7 @@ export type Database = {
           arquivada?: boolean
           cidade?: string | null
           cod?: number | null
+          conclusao?: string | null
           created_at?: string
           data_visita?: string | null
           devolutiva?: string | null

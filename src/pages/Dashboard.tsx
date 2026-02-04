@@ -2,12 +2,15 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ResponsesChart } from "@/components/dashboard/ResponsesChart";
 import { TopCitiesCard } from "@/components/dashboard/TopCitiesCard";
+import { FrequencyCard } from "@/components/dashboard/FrequencyCard";
 import { 
   FileWarning, 
   CheckCircle2, 
   AlertTriangle, 
   Home,
-  TrendingUp
+  TrendingUp,
+  FileText,
+  ClipboardCheck
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +28,20 @@ export default function Dashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reclamacoes")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch APCLs
+  const { data: apcls = [] } = useQuery({
+    queryKey: ["apcl"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("apcl")
         .select("*")
         .order("created_at", { ascending: false });
       
@@ -72,6 +89,57 @@ export default function Dashboard() {
       city,
       count,
       percentage: Math.round((count / totalReclamacoes) * 100) || 0,
+    }));
+
+  // Top motivos (tipos de reclamação)
+  const motivoCount: Record<string, number> = {};
+  reclamacoes.forEach(r => {
+    if (r.tipo_reclamacao) {
+      motivoCount[r.tipo_reclamacao] = (motivoCount[r.tipo_reclamacao] || 0) + 1;
+    }
+  });
+  
+  const topMotivos = Object.entries(motivoCount)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / totalReclamacoes) * 100) || 0,
+    }));
+
+  // Top conclusões de reclamações
+  const conclusaoRecCount: Record<string, number> = {};
+  reclamacoes.forEach(r => {
+    if (r.conclusao) {
+      conclusaoRecCount[r.conclusao] = (conclusaoRecCount[r.conclusao] || 0) + 1;
+    }
+  });
+  
+  const topConclusoesRec = Object.entries(conclusaoRecCount)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / reclamacoes.filter(r => r.conclusao).length) * 100) || 0,
+    }));
+
+  // Top conclusões de APCL
+  const conclusaoApclCount: Record<string, number> = {};
+  apcls.forEach(a => {
+    if (a.conclusao) {
+      conclusaoApclCount[a.conclusao] = (conclusaoApclCount[a.conclusao] || 0) + 1;
+    }
+  });
+  
+  const topConclusoesApcl = Object.entries(conclusaoApclCount)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / apcls.filter(a => a.conclusao).length) * 100) || 0,
     }));
 
   // Responses by day (last 7 days)
@@ -144,6 +212,28 @@ export default function Dashboard() {
           ]} />
         </div>
 
+        {/* Frequency Cards Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <FrequencyCard
+            title="Motivos Mais Frequentes"
+            items={topMotivos}
+            icon={<FileText className="w-5 h-5 text-primary" />}
+            emptyMessage="Nenhum tipo de reclamação registrado"
+          />
+          <FrequencyCard
+            title="Conclusões - Reclamações"
+            items={topConclusoesRec}
+            icon={<ClipboardCheck className="w-5 h-5 text-primary" />}
+            emptyMessage="Nenhuma conclusão registrada"
+          />
+          <FrequencyCard
+            title="Conclusões - APCL"
+            items={topConclusoesApcl}
+            icon={<ClipboardCheck className="w-5 h-5 text-primary" />}
+            emptyMessage="Nenhuma conclusão registrada"
+          />
+        </div>
+
         {/* Quick Stats */}
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-4">
@@ -164,9 +254,9 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Cidade Líder</p>
-              <p className="text-2xl font-bold text-foreground truncate">
-                {topCities[0]?.city || "N/A"}
+              <p className="text-sm text-muted-foreground">Total APCL</p>
+              <p className="text-2xl font-bold text-foreground">
+                {apcls.length}
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">

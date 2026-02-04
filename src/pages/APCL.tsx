@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -27,6 +28,7 @@ import { format, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Search, Archive, RotateCcw, Eye, CheckCircle, AlertCircle } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { EditableCell } from "@/components/table/EditableCell";
 
 type APCL = Tables<"apcl">;
 
@@ -46,6 +48,27 @@ export default function APCLPage() {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: string; value: unknown }) => {
+      const { error } = await supabase
+        .from("apcl")
+        .update({ [field]: value })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["apcl"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o campo.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -74,6 +97,10 @@ export default function APCLPage() {
     },
   });
 
+  const handleCellUpdate = async (id: string, field: string, value: unknown) => {
+    await updateMutation.mutateAsync({ id, field, value });
+  };
+
   const ativas = apcls.filter(a => !a.arquivada);
   const arquivadas = apcls.filter(a => a.arquivada);
 
@@ -84,7 +111,8 @@ export default function APCLPage() {
       a.cidade?.toLowerCase().includes(searchLower) ||
       a.unidade_consumidora?.toString().includes(search) ||
       a.equipe?.toLowerCase().includes(searchLower) ||
-      a.origem?.toLowerCase().includes(searchLower)
+      a.origem?.toLowerCase().includes(searchLower) ||
+      a.conclusao?.toLowerCase().includes(searchLower)
     );
   };
 
@@ -102,93 +130,185 @@ export default function APCLPage() {
 
   const APCLTable = ({ data }: { data: APCL[] }) => (
     <div className="rounded-lg border bg-card overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead>Origem</TableHead>
-            <TableHead>Nota AV</TableHead>
-            <TableHead>Nota FS</TableHead>
-            <TableHead>UC</TableHead>
-            <TableHead>Prazo Resposta</TableHead>
-            <TableHead>Cidade</TableHead>
-            <TableHead>Status Prazo</TableHead>
-            <TableHead>Equipe</TableHead>
-            <TableHead>Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                Nenhuma APCL encontrada
-              </TableCell>
+      <ScrollArea className="w-full">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="min-w-[100px]">Origem</TableHead>
+              <TableHead className="min-w-[80px]">Código</TableHead>
+              <TableHead className="min-w-[80px]">Nota AV</TableHead>
+              <TableHead className="min-w-[80px]">Nota FS</TableHead>
+              <TableHead className="min-w-[100px]">UC</TableHead>
+              <TableHead className="min-w-[120px]">Prazo Resp.</TableHead>
+              <TableHead className="min-w-[120px]">Cidade</TableHead>
+              <TableHead className="min-w-[120px]">Data Visita</TableHead>
+              <TableHead className="min-w-[100px]">Status</TableHead>
+              <TableHead className="min-w-[120px]">Visitado</TableHead>
+              <TableHead className="min-w-[120px]">Equipe</TableHead>
+              <TableHead className="min-w-[150px]">Tratativa</TableHead>
+              <TableHead className="min-w-[150px]">Conclusão</TableHead>
+              <TableHead className="min-w-[150px]">Devolutiva</TableHead>
+              <TableHead className="min-w-[200px]">Observações</TableHead>
+              <TableHead className="min-w-[80px]">Ações</TableHead>
             </TableRow>
-          ) : (
-            data.map((apcl) => {
-              const prazoStatus = getPrazoStatus(apcl.data_visita);
-              return (
-                <TableRow key={apcl.id} className="hover:bg-muted/30">
-                  <TableCell>
-                    <Badge variant="outline">{apcl.origem || "-"}</Badge>
-                  </TableCell>
-                  <TableCell className="font-mono">{apcl.nota_av || "-"}</TableCell>
-                  <TableCell className="font-mono">{apcl.nota_fs || "-"}</TableCell>
-                  <TableCell className="font-mono font-medium">{apcl.unidade_consumidora || "-"}</TableCell>
-                  <TableCell>{formatDate(apcl.prazo_resposta)}</TableCell>
-                  <TableCell>{apcl.cidade || "-"}</TableCell>
-                  <TableCell>
-                    {prazoStatus === "dentro" ? (
-                      <span className="badge-success">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Dentro do Prazo
-                      </span>
-                    ) : prazoStatus === "fora" ? (
-                      <span className="badge-danger">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        Fora do Prazo
-                      </span>
-                    ) : (
-                      <span className="badge-warning">Pendente</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{apcl.equipe || "-"}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedAPCL(apcl);
-                          setShowDetails(true);
-                        }}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      {apcl.arquivada ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => archiveMutation.mutate({ id: apcl.id, arquivada: false })}
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                        </Button>
+          </TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
+                  Nenhuma APCL encontrada
+                </TableCell>
+              </TableRow>
+            ) : (
+              data.map((apcl) => {
+                const prazoStatus = getPrazoStatus(apcl.data_visita);
+                return (
+                  <TableRow key={apcl.id} className="hover:bg-muted/30">
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.origem}
+                        onSave={(v) => handleCellUpdate(apcl.id, "origem", v)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      <EditableCell
+                        value={apcl.cod}
+                        type="number"
+                        onSave={(v) => handleCellUpdate(apcl.id, "cod", v)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      <EditableCell
+                        value={apcl.nota_av}
+                        type="number"
+                        onSave={(v) => handleCellUpdate(apcl.id, "nota_av", v)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      <EditableCell
+                        value={apcl.nota_fs}
+                        type="number"
+                        onSave={(v) => handleCellUpdate(apcl.id, "nota_fs", v)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-mono font-medium">
+                      <EditableCell
+                        value={apcl.unidade_consumidora}
+                        type="number"
+                        onSave={(v) => handleCellUpdate(apcl.id, "unidade_consumidora", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.prazo_resposta}
+                        type="date"
+                        onSave={(v) => handleCellUpdate(apcl.id, "prazo_resposta", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.cidade}
+                        onSave={(v) => handleCellUpdate(apcl.id, "cidade", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.data_visita}
+                        type="date"
+                        onSave={(v) => handleCellUpdate(apcl.id, "data_visita", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {prazoStatus === "dentro" ? (
+                        <span className="badge-success">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Dentro
+                        </span>
+                      ) : prazoStatus === "fora" ? (
+                        <span className="badge-danger">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Fora
+                        </span>
                       ) : (
+                        <span className="badge-warning">Pendente</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.visitado}
+                        type="date"
+                        onSave={(v) => handleCellUpdate(apcl.id, "visitado", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.equipe}
+                        onSave={(v) => handleCellUpdate(apcl.id, "equipe", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.tratativa}
+                        onSave={(v) => handleCellUpdate(apcl.id, "tratativa", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.conclusao}
+                        onSave={(v) => handleCellUpdate(apcl.id, "conclusao", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.devolutiva}
+                        onSave={(v) => handleCellUpdate(apcl.id, "devolutiva", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.observacoes}
+                        onSave={(v) => handleCellUpdate(apcl.id, "observacoes", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => archiveMutation.mutate({ id: apcl.id, arquivada: true })}
+                          onClick={() => {
+                            setSelectedAPCL(apcl);
+                            setShowDetails(true);
+                          }}
                         >
-                          <Archive className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
+                        {apcl.arquivada ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => archiveMutation.mutate({ id: apcl.id, arquivada: false })}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => archiveMutation.mutate({ id: apcl.id, arquivada: true })}
+                          >
+                            <Archive className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   );
 
@@ -200,7 +320,7 @@ export default function APCLPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">APCL - Ouvidorias</h1>
             <p className="text-muted-foreground mt-1">
-              Gerencie as ouvidorias APCL do sistema
+              Gerencie as ouvidorias APCL • Clique em qualquer célula para editar
             </p>
           </div>
           <div className="relative w-full md:w-72">
@@ -296,6 +416,10 @@ export default function APCLPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Tratativa</p>
                   <p className="font-medium">{selectedAPCL.tratativa || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Conclusão</p>
+                  <p className="font-medium">{selectedAPCL.conclusao || "-"}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">Devolutiva</p>
