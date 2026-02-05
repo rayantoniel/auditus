@@ -55,7 +55,7 @@ interface SpreadsheetImportProps {
 }
 
 export const SpreadsheetImport = forwardRef<HTMLDivElement, SpreadsheetImportProps>(
-  function SpreadsheetImport({ type }, ref) {
+  ({ type }, ref) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
