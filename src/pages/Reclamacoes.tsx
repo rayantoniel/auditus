@@ -108,6 +108,33 @@ export default function Reclamacoes() {
   const ativas = reclamacoes.filter(r => !r.arquivada);
   const arquivadas = reclamacoes.filter(r => r.arquivada);
 
+  // Find duplicate nota_rc, nota_fs, and instalacao values
+  const getDuplicateKeys = (list: Reclamacao[]) => {
+    const notaRcCount = new Map<number, number>();
+    const notaFsCount = new Map<number, number>();
+    const instalacaoCount = new Map<number, number>();
+    
+    list.forEach(r => {
+      if (r.nota_rc) notaRcCount.set(r.nota_rc, (notaRcCount.get(r.nota_rc) || 0) + 1);
+      if (r.nota_fs) notaFsCount.set(r.nota_fs, (notaFsCount.get(r.nota_fs) || 0) + 1);
+      if (r.instalacao) instalacaoCount.set(r.instalacao, (instalacaoCount.get(r.instalacao) || 0) + 1);
+    });
+
+    return {
+      duplicateNotaRc: new Set([...notaRcCount.entries()].filter(([, c]) => c > 1).map(([k]) => k)),
+      duplicateNotaFs: new Set([...notaFsCount.entries()].filter(([, c]) => c > 1).map(([k]) => k)),
+      duplicateInstalacao: new Set([...instalacaoCount.entries()].filter(([, c]) => c > 1).map(([k]) => k)),
+    };
+  };
+
+  const hasDuplicate = (r: Reclamacao, duplicates: ReturnType<typeof getDuplicateKeys>) => {
+    return (
+      (r.nota_rc && duplicates.duplicateNotaRc.has(r.nota_rc)) ||
+      (r.nota_fs && duplicates.duplicateNotaFs.has(r.nota_fs)) ||
+      (r.instalacao && duplicates.duplicateInstalacao.has(r.instalacao))
+    );
+  };
+
   const filterReclamacoes = (list: Reclamacao[]) => {
     if (!search) return list;
     const searchLower = search.toLowerCase();
@@ -125,7 +152,10 @@ export default function Reclamacoes() {
     return format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
   };
 
-  const ReclamacaoTable = ({ data }: { data: Reclamacao[] }) => (
+  const ReclamacaoTable = ({ data }: { data: Reclamacao[] }) => {
+    const duplicates = getDuplicateKeys(data);
+    
+    return (
     <div className="rounded-lg border bg-card overflow-hidden">
       <ScrollArea className="w-full">
         <Table>
@@ -153,8 +183,13 @@ export default function Reclamacoes() {
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((reclamacao) => (
-                <TableRow key={reclamacao.id} className="hover:bg-muted/30">
+              data.map((reclamacao) => {
+                const isDuplicate = hasDuplicate(reclamacao, duplicates);
+                return (
+                  <TableRow 
+                    key={reclamacao.id} 
+                    className={isDuplicate ? "bg-destructive/10 hover:bg-destructive/20" : "hover:bg-muted/30"}
+                  >
                   <TableCell className="font-mono">
                     <EditableCell
                       value={reclamacao.nota_rc}
@@ -259,7 +294,8 @@ export default function Reclamacoes() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -267,7 +303,7 @@ export default function Reclamacoes() {
       </ScrollArea>
     </div>
   );
-
+};
   return (
     <MainLayout>
       <div className="space-y-6">

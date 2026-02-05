@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, CheckCircle2, X } from "lucide-react";
 import * as XLSX from "xlsx";
 
 type ImportType = "reclamacao" | "apcl";
@@ -54,7 +54,8 @@ interface SpreadsheetImportProps {
   type: ImportType;
 }
 
-export function SpreadsheetImport({ type }: SpreadsheetImportProps) {
+export const SpreadsheetImport = forwardRef<HTMLDivElement, SpreadsheetImportProps>(
+  function SpreadsheetImport({ type }, ref) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
@@ -265,7 +266,7 @@ export function SpreadsheetImport({ type }: SpreadsheetImportProps) {
   const mappedFieldsCount = Object.values(columnMapping).filter(Boolean).length;
 
   return (
-    <Card>
+    <Card ref={ref}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileSpreadsheet className="w-5 h-5" />
@@ -433,4 +434,4 @@ export function SpreadsheetImport({ type }: SpreadsheetImportProps) {
       </CardContent>
     </Card>
   );
-}
+});

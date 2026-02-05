@@ -104,6 +104,33 @@ export default function APCLPage() {
   const ativas = apcls.filter(a => !a.arquivada);
   const arquivadas = apcls.filter(a => a.arquivada);
 
+  // Find duplicate nota_av, nota_fs, and unidade_consumidora values
+  const getDuplicateKeys = (list: APCL[]) => {
+    const notaAvCount = new Map<number, number>();
+    const notaFsCount = new Map<number, number>();
+    const ucCount = new Map<number, number>();
+    
+    list.forEach(a => {
+      if (a.nota_av) notaAvCount.set(a.nota_av, (notaAvCount.get(a.nota_av) || 0) + 1);
+      if (a.nota_fs) notaFsCount.set(a.nota_fs, (notaFsCount.get(a.nota_fs) || 0) + 1);
+      if (a.unidade_consumidora) ucCount.set(a.unidade_consumidora, (ucCount.get(a.unidade_consumidora) || 0) + 1);
+    });
+
+    return {
+      duplicateNotaAv: new Set([...notaAvCount.entries()].filter(([, c]) => c > 1).map(([k]) => k)),
+      duplicateNotaFs: new Set([...notaFsCount.entries()].filter(([, c]) => c > 1).map(([k]) => k)),
+      duplicateUC: new Set([...ucCount.entries()].filter(([, c]) => c > 1).map(([k]) => k)),
+    };
+  };
+
+  const hasDuplicate = (a: APCL, duplicates: ReturnType<typeof getDuplicateKeys>) => {
+    return (
+      (a.nota_av && duplicates.duplicateNotaAv.has(a.nota_av)) ||
+      (a.nota_fs && duplicates.duplicateNotaFs.has(a.nota_fs)) ||
+      (a.unidade_consumidora && duplicates.duplicateUC.has(a.unidade_consumidora))
+    );
+  };
+
   const filterAPCL = (list: APCL[]) => {
     if (!search) return list;
     const searchLower = search.toLowerCase();
@@ -128,8 +155,11 @@ export default function APCLPage() {
     return isAfter(visitDate, today) ? "dentro" : "fora";
   };
 
-  const APCLTable = ({ data }: { data: APCL[] }) => (
-    <div className="rounded-lg border bg-card overflow-hidden">
+  const APCLTable = ({ data }: { data: APCL[] }) => {
+    const duplicates = getDuplicateKeys(data);
+    
+    return (
+      <div className="rounded-lg border bg-card overflow-hidden">
       <ScrollArea className="w-full">
         <Table>
           <TableHeader>
@@ -162,8 +192,12 @@ export default function APCLPage() {
             ) : (
               data.map((apcl) => {
                 const prazoStatus = getPrazoStatus(apcl.data_visita);
+                const isDuplicate = hasDuplicate(apcl, duplicates);
                 return (
-                  <TableRow key={apcl.id} className="hover:bg-muted/30">
+                  <TableRow 
+                    key={apcl.id} 
+                    className={isDuplicate ? "bg-destructive/10 hover:bg-destructive/20" : "hover:bg-muted/30"}
+                  >
                     <TableCell>
                       <EditableCell
                         value={apcl.origem}
@@ -311,6 +345,7 @@ export default function APCLPage() {
       </ScrollArea>
     </div>
   );
+};
 
   return (
     <MainLayout>
