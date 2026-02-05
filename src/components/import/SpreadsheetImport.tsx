@@ -278,7 +278,7 @@ export const SpreadsheetImport = forwardRef<HTMLDivElement, SpreadsheetImportPro
       </CardHeader>
       <CardContent className="space-y-6">
         {step === "upload" && (
-          <div className="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+          <label className="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
             <Upload className="w-12 h-12 text-muted-foreground" />
             <div className="text-center">
               <p className="font-medium">Arraste um arquivo ou clique para selecionar</p>
@@ -289,14 +289,11 @@ export const SpreadsheetImport = forwardRef<HTMLDivElement, SpreadsheetImportPro
               accept=".xlsx,.xls,.csv"
               onChange={handleFileChange}
               className="hidden"
-              id="file-upload"
             />
-            <Label htmlFor="file-upload" asChild>
-              <Button variant="outline" className="cursor-pointer">
-                Selecionar Arquivo
-              </Button>
-            </Label>
-          </div>
+            <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+              Selecionar Arquivo
+            </span>
+          </label>
         )}
 
         {step === "mapping" && (
