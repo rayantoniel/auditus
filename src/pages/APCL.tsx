@@ -19,14 +19,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search, Archive, RotateCcw, Eye, CheckCircle, AlertCircle } from "lucide-react";
+import { Search, Archive, RotateCcw, Eye, CheckCircle, AlertCircle, Trash2, Filter } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
 
@@ -36,6 +54,10 @@ export default function APCLPage() {
   const [search, setSearch] = useState("");
   const [selectedAPCL, setSelectedAPCL] = useState<APCL | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [filterOrigem, setFilterOrigem] = useState<string>("all");
+  const [filterConclusao, setFilterConclusao] = useState<string>("all");
   const queryClient = useQueryClient();
 
   const { data: apcls = [], isLoading } = useQuery({
@@ -97,12 +119,71 @@ export default function APCLPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("apcl")
+        .delete()
+        .in("id", ids);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["apcl"] });
+      setSelectedIds(new Set());
+      toast({
+        title: "Sucesso",
+        description: "APCL(s) excluída(s) com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a(s) APCL(s).",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCellUpdate = async (id: string, field: string, value: unknown) => {
     await updateMutation.mutateAsync({ id, field, value });
   };
 
+  const handleSelectAll = (list: APCL[], checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(list.map(a => a.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const newSet = new Set(selectedIds);
+    if (checked) {
+      newSet.add(id);
+    } else {
+      newSet.delete(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.size > 0) {
+      setShowDeleteDialog(true);
+    }
+  };
+
+  const confirmDelete = () => {
+    deleteMutation.mutate(Array.from(selectedIds));
+    setShowDeleteDialog(false);
+  };
+
+  // Get unique values for filters
+  const origensUnicas = [...new Set(apcls.map(a => a.origem).filter(Boolean))];
+  const conclusoesUnicas = [...new Set(apcls.map(a => a.conclusao).filter(Boolean))];
+
   const ativas = apcls.filter(a => !a.arquivada);
-  const arquivadas = apcls.filter(a => a.arquivada);
+  const respondidas = apcls.filter(a => a.arquivada);
 
   // Find duplicate nota_av, nota_fs, and unidade_consumidora values
   const getDuplicateKeys = (list: APCL[]) => {
@@ -132,15 +213,31 @@ export default function APCLPage() {
   };
 
   const filterAPCL = (list: APCL[]) => {
-    if (!search) return list;
-    const searchLower = search.toLowerCase();
-    return list.filter(a => 
-      a.cidade?.toLowerCase().includes(searchLower) ||
-      a.unidade_consumidora?.toString().includes(search) ||
-      a.equipe?.toLowerCase().includes(searchLower) ||
-      a.origem?.toLowerCase().includes(searchLower) ||
-      a.conclusao?.toLowerCase().includes(searchLower)
-    );
+    let filtered = list;
+    
+    // Text search
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(a => 
+        a.cidade?.toLowerCase().includes(searchLower) ||
+        a.unidade_consumidora?.toString().includes(search) ||
+        a.equipe?.toLowerCase().includes(searchLower) ||
+        a.origem?.toLowerCase().includes(searchLower) ||
+        a.conclusao?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filter by origem
+    if (filterOrigem !== "all") {
+      filtered = filtered.filter(a => a.origem === filterOrigem);
+    }
+    
+    // Filter by conclusao
+    if (filterConclusao !== "all") {
+      filtered = filtered.filter(a => a.conclusao === filterConclusao);
+    }
+    
+    return filtered;
   };
 
   const formatDate = (date: string | null) => {
@@ -157,6 +254,7 @@ export default function APCLPage() {
 
   const APCLTable = ({ data }: { data: APCL[] }) => {
     const duplicates = getDuplicateKeys(data);
+    const allSelected = data.length > 0 && data.every(a => selectedIds.has(a.id));
     
     return (
       <div className="rounded-lg border bg-card overflow-hidden">
@@ -164,6 +262,13 @@ export default function APCLPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-[50px]">
+                <Checkbox 
+                  checked={allSelected}
+                  onCheckedChange={(checked) => handleSelectAll(data, !!checked)}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead className="min-w-[100px]">Origem</TableHead>
               <TableHead className="min-w-[80px]">Código</TableHead>
               <TableHead className="min-w-[80px]">Nota AV</TableHead>
@@ -179,13 +284,13 @@ export default function APCLPage() {
               <TableHead className="min-w-[150px]">Conclusão</TableHead>
               <TableHead className="min-w-[150px]">Devolutiva</TableHead>
               <TableHead className="min-w-[200px]">Observações</TableHead>
-              <TableHead className="min-w-[80px]">Ações</TableHead>
+              <TableHead className="min-w-[100px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={17} className="text-center py-8 text-muted-foreground">
                   Nenhuma APCL encontrada
                 </TableCell>
               </TableRow>
@@ -193,11 +298,19 @@ export default function APCLPage() {
               data.map((apcl) => {
                 const prazoStatus = getPrazoStatus(apcl.data_visita);
                 const isDuplicate = hasDuplicate(apcl, duplicates);
+                const isSelected = selectedIds.has(apcl.id);
                 return (
                   <TableRow 
                     key={apcl.id} 
-                    className={isDuplicate ? "bg-destructive/10 hover:bg-destructive/20" : "hover:bg-muted/30"}
+                    className={`${isDuplicate ? "bg-destructive/10 hover:bg-destructive/20" : "hover:bg-muted/30"} ${isSelected ? "bg-primary/10" : ""}`}
                   >
+                    <TableCell>
+                      <Checkbox 
+                        checked={isSelected}
+                        onCheckedChange={(checked) => handleSelectOne(apcl.id, !!checked)}
+                        aria-label="Selecionar"
+                      />
+                    </TableCell>
                     <TableCell>
                       <EditableCell
                         value={apcl.origem}
@@ -333,6 +446,16 @@ export default function APCLPage() {
                             <Archive className="w-4 h-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedIds(new Set([apcl.id]));
+                            setShowDeleteDialog(true);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -358,7 +481,23 @@ export default function APCLPage() {
               Gerencie as ouvidorias APCL • Clique em qualquer célula para editar
             </p>
           </div>
-          <div className="relative w-full md:w-72">
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleDeleteSelected}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir ({selectedIds.size})
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 md:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por cidade, UC, equipe..."
@@ -366,6 +505,31 @@ export default function APCLPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Select value={filterOrigem} onValueChange={setFilterOrigem}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Origem" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas origens</SelectItem>
+                {origensUnicas.map(origem => (
+                  <SelectItem key={origem} value={origem!}>{origem}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterConclusao} onValueChange={setFilterConclusao}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Conclusão" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas conclusões</SelectItem>
+                {conclusoesUnicas.map(conclusao => (
+                  <SelectItem key={conclusao} value={conclusao!}>{conclusao}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -376,9 +540,9 @@ export default function APCLPage() {
               Ativas
               <Badge variant="secondary" className="ml-1">{ativas.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="arquivadas" className="gap-2">
-              Arquivadas
-              <Badge variant="secondary" className="ml-1">{arquivadas.length}</Badge>
+            <TabsTrigger value="respondidas" className="gap-2">
+              Respondidas
+              <Badge variant="secondary" className="ml-1">{respondidas.length}</Badge>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="ativas" className="mt-6">
@@ -390,13 +554,13 @@ export default function APCLPage() {
               <APCLTable data={filterAPCL(ativas)} />
             )}
           </TabsContent>
-          <TabsContent value="arquivadas" className="mt-6">
+          <TabsContent value="respondidas" className="mt-6">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
               </div>
             ) : (
-              <APCLTable data={filterAPCL(arquivadas)} />
+              <APCLTable data={filterAPCL(respondidas)} />
             )}
           </TabsContent>
         </Tabs>
@@ -441,7 +605,7 @@ export default function APCLPage() {
                   <p className="font-medium">{formatDate(selectedAPCL.data_visita)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Visitado em</p>
+                  <p className="text-sm text-muted-foreground">Visitado</p>
                   <p className="font-medium">{formatDate(selectedAPCL.visitado)}</p>
                 </div>
                 <div>
@@ -456,9 +620,9 @@ export default function APCLPage() {
                   <p className="text-sm text-muted-foreground">Conclusão</p>
                   <p className="font-medium">{selectedAPCL.conclusao || "-"}</p>
                 </div>
-                <div className="col-span-2">
+                <div>
                   <p className="text-sm text-muted-foreground">Devolutiva</p>
-                  <p className="font-medium">{selectedAPCL.devolutiva || "Sem devolutiva"}</p>
+                  <p className="font-medium">{selectedAPCL.devolutiva || "-"}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">Observações</p>
@@ -473,6 +637,25 @@ export default function APCLPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir {selectedIds.size === 1 ? "esta APCL" : `estas ${selectedIds.size} APCLs`}? 
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );

@@ -1,6 +1,7 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ResponsesChart } from "@/components/dashboard/ResponsesChart";
+import { MonthlyResponsesChart } from "@/components/dashboard/MonthlyResponsesChart";
 import { TopCitiesCard } from "@/components/dashboard/TopCitiesCard";
 import { FrequencyCard } from "@/components/dashboard/FrequencyCard";
 import { 
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
@@ -158,6 +159,32 @@ export default function Dashboard() {
     return { date, count };
   });
 
+  // Responses by month (last 6 months)
+  const last6Months = Array.from({ length: 6 }, (_, i) => {
+    const date = subMonths(new Date(), 5 - i);
+    return {
+      month: format(date, "MMM/yy", { locale: ptBR }),
+      start: startOfMonth(date),
+      end: endOfMonth(date),
+    };
+  });
+
+  const responsesByMonth = last6Months.map(({ month, start, end }) => {
+    const reclamacoesCount = reclamacoes.filter(r => {
+      if (!r.respondido_em) return false;
+      const date = new Date(r.respondido_em);
+      return date >= start && date <= end;
+    }).length;
+    
+    const apclCount = apcls.filter(a => {
+      if (!a.arquivada) return false;
+      const date = new Date(a.updated_at);
+      return date >= start && date <= end;
+    }).length;
+    
+    return { month, reclamacoes: reclamacoesCount, apcl: apclCount };
+  });
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -212,6 +239,11 @@ export default function Dashboard() {
           ]} />
         </div>
 
+        {/* Monthly Chart */}
+        <div className="grid grid-cols-1 gap-6">
+          <MonthlyResponsesChart data={responsesByMonth} />
+        </div>
+
         {/* Frequency Cards Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <FrequencyCard
@@ -260,7 +292,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Total Arquivadas</p>
+              <p className="text-sm text-muted-foreground">Total Respondidas</p>
               <p className="text-2xl font-bold text-foreground">
                 {reclamacoes.filter(r => r.arquivada).length}
               </p>

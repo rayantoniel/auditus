@@ -19,14 +19,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search, Archive, RotateCcw, Eye, CheckCircle } from "lucide-react";
+import { Search, Archive, RotateCcw, Eye, Trash2, Filter
+ } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
 
@@ -36,6 +55,10 @@ export default function Reclamacoes() {
   const [search, setSearch] = useState("");
   const [selectedReclamacao, setSelectedReclamacao] = useState<Reclamacao | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [filterTipo, setFilterTipo] = useState<string>("all");
+  const [filterConclusao, setFilterConclusao] = useState<string>("all");
   const queryClient = useQueryClient();
 
   const { data: reclamacoes = [], isLoading } = useQuery({
@@ -101,12 +124,71 @@ export default function Reclamacoes() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("reclamacoes")
+        .delete()
+        .in("id", ids);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reclamacoes"] });
+      setSelectedIds(new Set());
+      toast({
+        title: "Sucesso",
+        description: "Reclamação(ões) excluída(s) com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a(s) reclamação(ões).",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCellUpdate = async (id: string, field: string, value: unknown) => {
     await updateMutation.mutateAsync({ id, field, value });
   };
 
+  const handleSelectAll = (list: Reclamacao[], checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(list.map(r => r.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const newSet = new Set(selectedIds);
+    if (checked) {
+      newSet.add(id);
+    } else {
+      newSet.delete(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.size > 0) {
+      setShowDeleteDialog(true);
+    }
+  };
+
+  const confirmDelete = () => {
+    deleteMutation.mutate(Array.from(selectedIds));
+    setShowDeleteDialog(false);
+  };
+
+  // Get unique values for filters
+  const tiposUnicos = [...new Set(reclamacoes.map(r => r.tipo_reclamacao).filter(Boolean))];
+  const conclusoesUnicas = [...new Set(reclamacoes.map(r => r.conclusao).filter(Boolean))];
+
   const ativas = reclamacoes.filter(r => !r.arquivada);
-  const arquivadas = reclamacoes.filter(r => r.arquivada);
+  const respondidas = reclamacoes.filter(r => r.arquivada);
 
   // Find duplicate nota_rc, nota_fs, and instalacao values
   const getDuplicateKeys = (list: Reclamacao[]) => {
@@ -136,15 +218,31 @@ export default function Reclamacoes() {
   };
 
   const filterReclamacoes = (list: Reclamacao[]) => {
-    if (!search) return list;
-    const searchLower = search.toLowerCase();
-    return list.filter(r => 
-      r.cidade?.toLowerCase().includes(searchLower) ||
-      r.instalacao?.toString().includes(search) ||
-      r.equipe_responsavel?.toLowerCase().includes(searchLower) ||
-      r.tipo_reclamacao?.toLowerCase().includes(searchLower) ||
-      r.conclusao?.toLowerCase().includes(searchLower)
-    );
+    let filtered = list;
+    
+    // Text search
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(r => 
+        r.cidade?.toLowerCase().includes(searchLower) ||
+        r.instalacao?.toString().includes(search) ||
+        r.equipe_responsavel?.toLowerCase().includes(searchLower) ||
+        r.tipo_reclamacao?.toLowerCase().includes(searchLower) ||
+        r.conclusao?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filter by tipo
+    if (filterTipo !== "all") {
+      filtered = filtered.filter(r => r.tipo_reclamacao === filterTipo);
+    }
+    
+    // Filter by conclusao
+    if (filterConclusao !== "all") {
+      filtered = filtered.filter(r => r.conclusao === filterConclusao);
+    }
+    
+    return filtered;
   };
 
   const formatDate = (date: string | null) => {
@@ -154,6 +252,8 @@ export default function Reclamacoes() {
 
   const ReclamacaoTable = ({ data }: { data: Reclamacao[] }) => {
     const duplicates = getDuplicateKeys(data);
+    const allSelected = data.length > 0 && data.every(r => selectedIds.has(r.id));
+    const someSelected = data.some(r => selectedIds.has(r.id));
     
     return (
     <div className="rounded-lg border bg-card overflow-hidden">
@@ -161,6 +261,13 @@ export default function Reclamacoes() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-[50px]">
+                <Checkbox 
+                  checked={allSelected}
+                  onCheckedChange={(checked) => handleSelectAll(data, !!checked)}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead className="min-w-[80px]">Nota RC</TableHead>
               <TableHead className="min-w-[80px]">Nota FS</TableHead>
               <TableHead className="min-w-[100px]">Instalação</TableHead>
@@ -172,24 +279,32 @@ export default function Reclamacoes() {
               <TableHead className="min-w-[120px]">Data Visita</TableHead>
               <TableHead className="min-w-[120px]">Equipe</TableHead>
               <TableHead className="min-w-[200px]">Observações</TableHead>
-              <TableHead className="min-w-[80px]">Ações</TableHead>
+              <TableHead className="min-w-[100px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                   Nenhuma reclamação encontrada
                 </TableCell>
               </TableRow>
             ) : (
               data.map((reclamacao) => {
                 const isDuplicate = hasDuplicate(reclamacao, duplicates);
+                const isSelected = selectedIds.has(reclamacao.id);
                 return (
                   <TableRow 
                     key={reclamacao.id} 
-                    className={isDuplicate ? "bg-destructive/10 hover:bg-destructive/20" : "hover:bg-muted/30"}
+                    className={`${isDuplicate ? "bg-destructive/10 hover:bg-destructive/20" : "hover:bg-muted/30"} ${isSelected ? "bg-primary/10" : ""}`}
                   >
+                  <TableCell>
+                    <Checkbox 
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleSelectOne(reclamacao.id, !!checked)}
+                      aria-label="Selecionar"
+                    />
+                  </TableCell>
                   <TableCell className="font-mono">
                     <EditableCell
                       value={reclamacao.nota_rc}
@@ -291,6 +406,16 @@ export default function Reclamacoes() {
                           <Archive className="w-4 h-4" />
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedIds(new Set([reclamacao.id]));
+                          setShowDeleteDialog(true);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -304,6 +429,7 @@ export default function Reclamacoes() {
     </div>
   );
 };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -315,7 +441,23 @@ export default function Reclamacoes() {
               Gerencie todas as reclamações do sistema • Clique em qualquer célula para editar
             </p>
           </div>
-          <div className="relative w-full md:w-72">
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleDeleteSelected}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir ({selectedIds.size})
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 md:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por cidade, instalação..."
@@ -323,6 +465,31 @@ export default function Reclamacoes() {
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Select value={filterTipo} onValueChange={setFilterTipo}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Tipo de Reclamação" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os tipos</SelectItem>
+                {tiposUnicos.map(tipo => (
+                  <SelectItem key={tipo} value={tipo!}>{tipo}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterConclusao} onValueChange={setFilterConclusao}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Conclusão" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas conclusões</SelectItem>
+                {conclusoesUnicas.map(conclusao => (
+                  <SelectItem key={conclusao} value={conclusao!}>{conclusao}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -333,9 +500,9 @@ export default function Reclamacoes() {
               Ativas
               <Badge variant="secondary" className="ml-1">{ativas.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="arquivadas" className="gap-2">
-              Arquivadas
-              <Badge variant="secondary" className="ml-1">{arquivadas.length}</Badge>
+            <TabsTrigger value="respondidas" className="gap-2">
+              Respondidas
+              <Badge variant="secondary" className="ml-1">{respondidas.length}</Badge>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="ativas" className="mt-6">
@@ -347,13 +514,13 @@ export default function Reclamacoes() {
               <ReclamacaoTable data={filterReclamacoes(ativas)} />
             )}
           </TabsContent>
-          <TabsContent value="arquivadas" className="mt-6">
+          <TabsContent value="respondidas" className="mt-6">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
               </div>
             ) : (
-              <ReclamacaoTable data={filterReclamacoes(arquivadas)} />
+              <ReclamacaoTable data={filterReclamacoes(respondidas)} />
             )}
           </TabsContent>
         </Tabs>
@@ -414,6 +581,25 @@ export default function Reclamacoes() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir {selectedIds.size === 1 ? "esta reclamação" : `estas ${selectedIds.size} reclamações`}? 
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );
