@@ -47,7 +47,7 @@ export function Sidebar() {
               <FileWarning className="w-6 h-6 text-sidebar-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">GestãoRC</h1>
+              <h1 className="font-semibold text-lg">Auditus</h1>
               <p className="text-xs text-sidebar-muted">Sistema de Reclamações</p>
             </div>
           </div>

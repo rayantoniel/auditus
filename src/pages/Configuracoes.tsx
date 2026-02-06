@@ -44,7 +44,6 @@ export default function Configuracoes() {
   return (
     <MainLayout>
       <div className="space-y-6 max-w-2xl">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
           <p className="text-muted-foreground mt-1">
@@ -52,7 +51,6 @@ export default function Configuracoes() {
           </p>
         </div>
 
-        {/* Notifications */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -92,7 +90,6 @@ export default function Configuracoes() {
           </CardContent>
         </Card>
 
-        {/* Appearance */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -122,7 +119,6 @@ export default function Configuracoes() {
           </CardContent>
         </Card>
 
-        {/* Security */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -160,7 +156,6 @@ export default function Configuracoes() {
           </CardContent>
         </Card>
 
-        {/* Data */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -187,7 +182,6 @@ export default function Configuracoes() {
           </CardContent>
         </Card>
 
-        {/* Danger Zone */}
         <Card className="border-destructive/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
