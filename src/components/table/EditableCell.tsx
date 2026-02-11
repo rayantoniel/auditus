@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface EditableCellProps {
   value: string | number | null;
   onSave: (value: string | number | null) => Promise<void>;
-  type?: "text" | "number" | "date";
+  type?: "text" | "number" | "date" | "select";
+  options?: string[];
   className?: string;
   disabled?: boolean;
 }
@@ -14,6 +22,7 @@ export function EditableCell({
   value,
   onSave,
   type = "text",
+  options = [],
   className,
   disabled = false,
 }: EditableCellProps) {
@@ -39,7 +48,6 @@ export function EditableCell({
     const trimmedValue = editValue.trim();
     const originalValue = value?.toString() ?? "";
 
-    // No change
     if (trimmedValue === originalValue) {
       setIsEditing(false);
       return;
@@ -57,12 +65,25 @@ export function EditableCell({
       await onSave(newValue);
       setIsEditing(false);
     } catch (error) {
-      // Revert to original
       setEditValue(originalValue);
     } finally {
       setIsSaving(false);
     }
   }, [editValue, value, type, onSave, isSaving]);
+
+  const handleSelectSave = useCallback(async (newVal: string) => {
+    if (isSaving) return;
+    const saveValue = newVal === "__clear__" ? null : newVal;
+    setIsSaving(true);
+    try {
+      await onSave(saveValue);
+      setIsEditing(false);
+    } catch (error) {
+      setEditValue(value?.toString() ?? "");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [value, onSave, isSaving]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -77,7 +98,6 @@ export function EditableCell({
     if (value === null || value === undefined || value === "") return "-";
 
     if (type === "date" && typeof value === "string") {
-      // Format YYYY-MM-DD to DD/MM/YYYY
       const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (match) {
         return `${match[3]}/${match[2]}/${match[1]}`;
@@ -92,6 +112,35 @@ export function EditableCell({
       <span className={cn("block truncate", className)}>
         {formatDisplayValue()}
       </span>
+    );
+  }
+
+  if (type === "select" && isEditing) {
+    return (
+      <Select
+        value={value?.toString() ?? ""}
+        onValueChange={(val) => {
+          handleSelectSave(val);
+        }}
+        onOpenChange={(open) => {
+          if (!open) setIsEditing(false);
+        }}
+        defaultOpen
+      >
+        <SelectTrigger className="h-8 text-sm w-full">
+          <SelectValue placeholder="Selecionar..." />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__clear__">
+            <span className="text-muted-foreground italic">Limpar</span>
+          </SelectItem>
+          {options.map((opt) => (
+            <SelectItem key={opt} value={opt}>
+              {opt}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     );
   }
 
