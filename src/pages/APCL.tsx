@@ -66,7 +66,7 @@ export default function APCLPage() {
       const { data, error } = await supabase
         .from("apcl")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("prazo_resposta", { ascending: false, nullsFirst: false });
       
       if (error) throw error;
       return data;
@@ -314,6 +314,8 @@ export default function APCLPage() {
                     <TableCell>
                       <EditableCell
                         value={apcl.origem}
+                        type="select"
+                        options={origensUnicas as string[]}
                         onSave={(v) => handleCellUpdate(apcl.id, "origem", v)}
                       />
                     </TableCell>
@@ -402,6 +404,8 @@ export default function APCLPage() {
                     <TableCell>
                       <EditableCell
                         value={apcl.conclusao}
+                        type="select"
+                        options={conclusoesUnicas as string[]}
                         onSave={(v) => handleCellUpdate(apcl.id, "conclusao", v)}
                       />
                     </TableCell>

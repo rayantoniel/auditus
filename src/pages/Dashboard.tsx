@@ -4,6 +4,7 @@ import { ResponsesChart } from "@/components/dashboard/ResponsesChart";
 import { MonthlyResponsesChart } from "@/components/dashboard/MonthlyResponsesChart";
 import { TopCitiesCard } from "@/components/dashboard/TopCitiesCard";
 import { FrequencyCard } from "@/components/dashboard/FrequencyCard";
+import { DashboardSummary } from "@/components/dashboard/DashboardSummary";
 import { 
   FileWarning, 
   CheckCircle2, 
@@ -195,6 +196,9 @@ export default function Dashboard() {
             Visão geral das reclamações - {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
           </p>
         </div>
+
+        {/* Summary Table */}
+        <DashboardSummary reclamacoes={reclamacoes} apcls={apcls} />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

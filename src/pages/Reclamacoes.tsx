@@ -67,7 +67,7 @@ export default function Reclamacoes() {
       const { data, error } = await supabase
         .from("reclamacoes")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("prazo", { ascending: false, nullsFirst: false });
       
       if (error) throw error;
       return data;
@@ -342,12 +342,16 @@ export default function Reclamacoes() {
                   <TableCell>
                     <EditableCell
                       value={reclamacao.tipo_reclamacao}
+                      type="select"
+                      options={tiposUnicos as string[]}
                       onSave={(v) => handleCellUpdate(reclamacao.id, "tipo_reclamacao", v)}
                     />
                   </TableCell>
                   <TableCell>
                     <EditableCell
                       value={reclamacao.conclusao}
+                      type="select"
+                      options={conclusoesUnicas as string[]}
                       onSave={(v) => handleCellUpdate(reclamacao.id, "conclusao", v)}
                     />
                   </TableCell>
