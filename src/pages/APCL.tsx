@@ -282,6 +282,7 @@ export default function APCLPage() {
               <TableHead className="min-w-[120px]">Equipe</TableHead>
               <TableHead className="min-w-[150px]">Tratativa</TableHead>
               <TableHead className="min-w-[150px]">Conclusão</TableHead>
+              <TableHead className="min-w-[130px]">Resolução</TableHead>
               <TableHead className="min-w-[150px]">Devolutiva</TableHead>
               <TableHead className="min-w-[200px]">Observações</TableHead>
               <TableHead className="min-w-[100px]">Ações</TableHead>
@@ -290,7 +291,7 @@ export default function APCLPage() {
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={17} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={18} className="text-center py-8 text-muted-foreground">
                   Nenhuma APCL encontrada
                 </TableCell>
               </TableRow>
@@ -408,6 +409,14 @@ export default function APCLPage() {
                         type="select"
                         options={conclusoesUnicas as string[]}
                         onSave={(v) => handleCellUpdate(apcl.id, "conclusao", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell
+                        value={apcl.resolucao}
+                        type="select"
+                        options={["Procedente", "Improcedente"]}
+                        onSave={(v) => handleCellUpdate(apcl.id, "resolucao", v)}
                       />
                     </TableCell>
                     <TableCell>

@@ -30,6 +30,7 @@ export type Database = {
           observacoes: string | null
           origem: string | null
           prazo_resposta: string | null
+          resolucao: string | null
           tratativa: string | null
           unidade_consumidora: number | null
           updated_at: string
@@ -51,6 +52,7 @@ export type Database = {
           observacoes?: string | null
           origem?: string | null
           prazo_resposta?: string | null
+          resolucao?: string | null
           tratativa?: string | null
           unidade_consumidora?: number | null
           updated_at?: string
@@ -72,6 +74,7 @@ export type Database = {
           observacoes?: string | null
           origem?: string | null
           prazo_resposta?: string | null
+          resolucao?: string | null
           tratativa?: string | null
           unidade_consumidora?: number | null
           updated_at?: string
@@ -125,6 +128,7 @@ export type Database = {
           nota_rc: number | null
           observacoes: string | null
           prazo: string | null
+          resolucao: string | null
           respondido_em: string | null
           tipo_reclamacao: string | null
           updated_at: string
@@ -144,6 +148,7 @@ export type Database = {
           nota_rc?: number | null
           observacoes?: string | null
           prazo?: string | null
+          resolucao?: string | null
           respondido_em?: string | null
           tipo_reclamacao?: string | null
           updated_at?: string
@@ -163,6 +168,7 @@ export type Database = {
           nota_rc?: number | null
           observacoes?: string | null
           prazo?: string | null
+          resolucao?: string | null
           respondido_em?: string | null
           tipo_reclamacao?: string | null
           updated_at?: string
