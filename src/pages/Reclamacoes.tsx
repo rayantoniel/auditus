@@ -268,6 +268,7 @@ export default function Reclamacoes() {
                   aria-label="Selecionar todos"
                 />
               </TableHead>
+              <TableHead className="min-w-[80px]">Cod</TableHead>
               <TableHead className="min-w-[80px]">Nota RC</TableHead>
               <TableHead className="min-w-[80px]">Nota FS</TableHead>
               <TableHead className="min-w-[100px]">Instalação</TableHead>
@@ -285,7 +286,7 @@ export default function Reclamacoes() {
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                   Nenhuma reclamação encontrada
                 </TableCell>
               </TableRow>
@@ -303,6 +304,14 @@ export default function Reclamacoes() {
                       checked={isSelected}
                       onCheckedChange={(checked) => handleSelectOne(reclamacao.id, !!checked)}
                       aria-label="Selecionar"
+                    />
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    <EditableCell
+                      value={reclamacao.cod}
+                      type="select"
+                      options={["100", "200", "300"]}
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "cod", v ? Number(v) : null)}
                     />
                   </TableCell>
                   <TableCell className="font-mono">

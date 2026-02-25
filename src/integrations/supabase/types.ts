@@ -114,6 +114,7 @@ export type Database = {
         Row: {
           arquivada: boolean
           cidade: string | null
+          cod: number | null
           conclusao: string | null
           created_at: string
           data_visita: string | null
@@ -132,6 +133,7 @@ export type Database = {
         Insert: {
           arquivada?: boolean
           cidade?: string | null
+          cod?: number | null
           conclusao?: string | null
           created_at?: string
           data_visita?: string | null
@@ -150,6 +152,7 @@ export type Database = {
         Update: {
           arquivada?: boolean
           cidade?: string | null
+          cod?: number | null
           conclusao?: string | null
           created_at?: string
           data_visita?: string | null

@@ -322,8 +322,9 @@ export default function APCLPage() {
                     <TableCell className="font-mono">
                       <EditableCell
                         value={apcl.cod}
-                        type="number"
-                        onSave={(v) => handleCellUpdate(apcl.id, "cod", v)}
+                        type="select"
+                        options={["100", "200", "300"]}
+                        onSave={(v) => handleCellUpdate(apcl.id, "cod", v ? Number(v) : null)}
                       />
                     </TableCell>
                     <TableCell className="font-mono">

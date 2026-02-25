@@ -10,7 +10,6 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   Home,
-  TrendingUp,
   FileText,
   ClipboardCheck
 } from "lucide-react";
@@ -86,7 +85,6 @@ export default function Dashboard() {
   
   const topCities = Object.entries(cidadeCount)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 5)
     .map(([city, count]) => ({
       city,
       count,
@@ -234,13 +232,8 @@ export default function Dashboard() {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <ResponsesChart data={responsesByDay} />
-          </div>
-          <TopCitiesCard cities={topCities.length > 0 ? topCities : [
-            { city: "Sem dados", count: 0, percentage: 0 }
-          ]} />
+        <div className="grid grid-cols-1 gap-6">
+          <ResponsesChart data={responsesByDay} />
         </div>
 
         {/* Monthly Chart */}
@@ -270,39 +263,10 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Quick Stats */}
-        <div className="stat-card">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-semibold text-foreground">Resumo Rápido</h3>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Pendentes</p>
-              <p className="text-2xl font-bold text-foreground">
-                {totalReclamacoes - reclamacoesRespondidas}
-              </p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Taxa de Resposta</p>
-              <p className="text-2xl font-bold text-foreground">
-                {Math.round((reclamacoesRespondidas / totalReclamacoes) * 100) || 0}%
-              </p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Total APCL</p>
-              <p className="text-2xl font-bold text-foreground">
-                {apcls.length}
-              </p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Total Respondidas</p>
-              <p className="text-2xl font-bold text-foreground">
-                {reclamacoes.filter(r => r.arquivada).length}
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Top Cities - All cities */}
+        <TopCitiesCard cities={topCities.length > 0 ? topCities : [
+          { city: "Sem dados", count: 0, percentage: 0 }
+        ]} />
       </div>
     </MainLayout>
   );

@@ -29,9 +29,13 @@ export function DashboardSummary({ reclamacoes, apcls }: DashboardSummaryProps) 
     return d >= startMonth && d <= endMonth;
   });
 
-  // Cod 100: count of records (total do mês)
-  const recCod100 = recMes.length;
+  // Cod counts
+  const recCod100 = recMes.filter(r => r.cod === 100).length;
+  const recCod200 = recMes.filter(r => r.cod === 200).length;
+  const recCod300 = recMes.filter(r => r.cod === 300).length;
   const apclCod100 = apclMes.filter(a => a.cod === 100).length;
+  const apclCod200 = apclMes.filter(a => a.cod === 200).length;
+  const apclCod300 = apclMes.filter(a => a.cod === 300).length;
 
   // % Tratadas: respondidas antes do prazo
   const recTratadasCount = recMes.filter(r => {
@@ -62,6 +66,8 @@ export function DashboardSummary({ reclamacoes, apcls }: DashboardSummaryProps) 
 
   const rows = [
     { label: "Cod 100", recValue: recCod100.toString(), apclValue: apclCod100.toString() },
+    { label: "Cod 200", recValue: recCod200.toString(), apclValue: apclCod200.toString() },
+    { label: "Cod 300", recValue: recCod300.toString(), apclValue: apclCod300.toString() },
     { label: "% Tratadas no Prazo", recValue: `${recTratadas}%`, apclValue: `${apclTratadas}%` },
     { label: "% Procedentes", recValue: `${recProcedentes}%`, apclValue: `${apclProcedentes}%` },
   ];

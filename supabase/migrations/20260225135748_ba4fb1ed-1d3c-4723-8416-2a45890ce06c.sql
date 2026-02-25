@@ -1,0 +1,1 @@
+ALTER TABLE public.reclamacoes ADD COLUMN cod integer;
