@@ -276,6 +276,7 @@ export default function Reclamacoes() {
               <TableHead className="min-w-[120px]">Cidade</TableHead>
               <TableHead className="min-w-[150px]">Tipo</TableHead>
               <TableHead className="min-w-[150px]">Conclusão</TableHead>
+              <TableHead className="min-w-[130px]">Resolução</TableHead>
               <TableHead className="min-w-[120px]">Respondido em</TableHead>
               <TableHead className="min-w-[120px]">Data Visita</TableHead>
               <TableHead className="min-w-[120px]">Equipe</TableHead>
@@ -286,7 +287,7 @@ export default function Reclamacoes() {
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
                   Nenhuma reclamação encontrada
                 </TableCell>
               </TableRow>
@@ -362,6 +363,14 @@ export default function Reclamacoes() {
                       type="select"
                       options={conclusoesUnicas as string[]}
                       onSave={(v) => handleCellUpdate(reclamacao.id, "conclusao", v)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <EditableCell
+                      value={reclamacao.resolucao}
+                      type="select"
+                      options={["Procedente", "Improcedente"]}
+                      onSave={(v) => handleCellUpdate(reclamacao.id, "resolucao", v)}
                     />
                   </TableCell>
                   <TableCell>

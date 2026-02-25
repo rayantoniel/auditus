@@ -51,17 +51,15 @@ export function DashboardSummary({ reclamacoes, apcls }: DashboardSummaryProps) 
   }).length;
   const apclTratadas = apclMes.length > 0 ? Math.round((apclTratadasCount / apclMes.length) * 100) : 0;
 
-  // % Procedentes: têm conclusão e conclusão != "medição normal" e não é vazio
-  const recProcedenteCount = recMes.filter(r => {
-    if (!r.conclusao || r.conclusao.trim() === "") return false;
-    return r.conclusao.toLowerCase() !== "medição normal";
-  }).length;
+  // % Procedentes: resolucao === "Procedente"
+  const recProcedenteCount = recMes.filter(r => 
+    r.resolucao?.toLowerCase() === "procedente"
+  ).length;
   const recProcedentes = recMes.length > 0 ? Math.round((recProcedenteCount / recMes.length) * 100) : 0;
 
-  const apclProcedenteCount = apclMes.filter(a => {
-    if (!a.conclusao || a.conclusao.trim() === "") return false;
-    return a.conclusao.toLowerCase() !== "medição normal";
-  }).length;
+  const apclProcedenteCount = apclMes.filter(a => 
+    a.resolucao?.toLowerCase() === "procedente"
+  ).length;
   const apclProcedentes = apclMes.length > 0 ? Math.round((apclProcedenteCount / apclMes.length) * 100) : 0;
 
   const rows = [
