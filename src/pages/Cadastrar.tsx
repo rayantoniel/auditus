@@ -12,12 +12,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { FileWarning, MessageSquareWarning, Loader2, FileSpreadsheet, PenLine } from "lucide-react";
 import { SpreadsheetImport } from "@/components/import/SpreadsheetImport";
+import { useFieldOptions } from "@/hooks/useFieldOptions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Cadastrar() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("reclamacao");
   const [mode, setMode] = useState<"manual" | "import">("manual");
+
+  // Field options
+  const { values: tipoRecOptions } = useFieldOptions("tipo_reclamacao");
+  const { values: conclusaoRecOptions } = useFieldOptions("conclusao_reclamacao");
+  const { values: equipeRecOptions } = useFieldOptions("equipe_reclamacao");
+  const { values: origemApclOptions } = useFieldOptions("origem_apcl");
+  const { values: conclusaoApclOptions } = useFieldOptions("conclusao_apcl");
+  const { values: equipeApclOptions } = useFieldOptions("equipe_apcl");
 
   // Reclamação form state
   const [reclamacaoForm, setReclamacaoForm] = useState({
@@ -255,21 +271,37 @@ export default function Cadastrar() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="tipo_reclamacao">Tipo de Reclamação</Label>
-                        <Input
-                          id="tipo_reclamacao"
-                          placeholder="Ex: Falta de energia"
+                        <Select
                           value={reclamacaoForm.tipo_reclamacao}
-                          onChange={(e) => setReclamacaoForm({ ...reclamacaoForm, tipo_reclamacao: e.target.value })}
-                        />
+                          onValueChange={(v) => setReclamacaoForm({ ...reclamacaoForm, tipo_reclamacao: v === "__clear__" ? "" : v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar tipo..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__clear__"><span className="text-muted-foreground italic">Limpar</span></SelectItem>
+                            {tipoRecOptions.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="equipe_responsavel">Equipe Responsável</Label>
-                        <Input
-                          id="equipe_responsavel"
-                          placeholder="Nome da equipe"
+                        <Select
                           value={reclamacaoForm.equipe_responsavel}
-                          onChange={(e) => setReclamacaoForm({ ...reclamacaoForm, equipe_responsavel: e.target.value })}
-                        />
+                          onValueChange={(v) => setReclamacaoForm({ ...reclamacaoForm, equipe_responsavel: v === "__clear__" ? "" : v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar equipe..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__clear__"><span className="text-muted-foreground italic">Limpar</span></SelectItem>
+                            {equipeRecOptions.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
@@ -317,12 +349,20 @@ export default function Cadastrar() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="origem">Origem</Label>
-                        <Input
-                          id="origem"
-                          placeholder="Ex: ANEEL"
+                        <Select
                           value={apclForm.origem}
-                          onChange={(e) => setAPCLForm({ ...apclForm, origem: e.target.value })}
-                        />
+                          onValueChange={(v) => setAPCLForm({ ...apclForm, origem: v === "__clear__" ? "" : v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar origem..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__clear__"><span className="text-muted-foreground italic">Limpar</span></SelectItem>
+                            {origemApclOptions.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="nota_av">Nota AV</Label>
@@ -390,12 +430,20 @@ export default function Cadastrar() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="equipe">Equipe</Label>
-                        <Input
-                          id="equipe"
-                          placeholder="Nome da equipe"
+                        <Select
                           value={apclForm.equipe}
-                          onChange={(e) => setAPCLForm({ ...apclForm, equipe: e.target.value })}
-                        />
+                          onValueChange={(v) => setAPCLForm({ ...apclForm, equipe: v === "__clear__" ? "" : v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar equipe..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__clear__"><span className="text-muted-foreground italic">Limpar</span></SelectItem>
+                            {equipeApclOptions.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
@@ -411,12 +459,20 @@ export default function Cadastrar() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="conclusao_apcl">Conclusão</Label>
-                        <Input
-                          id="conclusao_apcl"
-                          placeholder="Conclusão da APCL"
+                        <Select
                           value={apclForm.conclusao}
-                          onChange={(e) => setAPCLForm({ ...apclForm, conclusao: e.target.value })}
-                        />
+                          onValueChange={(v) => setAPCLForm({ ...apclForm, conclusao: v === "__clear__" ? "" : v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar conclusão..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__clear__"><span className="text-muted-foreground italic">Limpar</span></SelectItem>
+                            {conclusaoApclOptions.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 

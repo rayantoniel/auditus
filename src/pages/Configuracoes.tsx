@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { FieldOptionsManager } from "@/components/settings/FieldOptionsManager";
 import { 
   Bell, 
   Moon, 
@@ -14,7 +15,12 @@ import {
   Database, 
   FileDown,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  ListChecks,
+  FileWarning,
+  MessageSquareWarning,
+  Users,
+  Tag,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -50,6 +56,64 @@ export default function Configuracoes() {
             Gerencie as preferências do sistema
           </p>
         </div>
+
+        {/* Cadastro de opções de campos */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="w-5 h-5" />
+              Opções de Campos
+            </CardTitle>
+            <CardDescription>
+              Cadastre as opções disponíveis nos menus de seleção das planilhas
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Reclamações</h3>
+            <div className="grid gap-4">
+              <FieldOptionsManager
+                categoria="tipo_reclamacao"
+                title="Tipo de Reclamação"
+                description="Opções para o campo 'Tipo' nas reclamações"
+                icon={<Tag className="w-4 h-4" />}
+              />
+              <FieldOptionsManager
+                categoria="conclusao_reclamacao"
+                title="Conclusão"
+                description="Opções para o campo 'Conclusão' nas reclamações"
+                icon={<FileWarning className="w-4 h-4" />}
+              />
+              <FieldOptionsManager
+                categoria="equipe_reclamacao"
+                title="Equipe Responsável"
+                description="Opções para o campo 'Equipe' nas reclamações"
+                icon={<Users className="w-4 h-4" />}
+              />
+            </div>
+            <Separator />
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">APCL</h3>
+            <div className="grid gap-4">
+              <FieldOptionsManager
+                categoria="origem_apcl"
+                title="Origem"
+                description="Opções para o campo 'Origem' nas APCLs"
+                icon={<Tag className="w-4 h-4" />}
+              />
+              <FieldOptionsManager
+                categoria="conclusao_apcl"
+                title="Conclusão"
+                description="Opções para o campo 'Conclusão' nas APCLs"
+                icon={<MessageSquareWarning className="w-4 h-4" />}
+              />
+              <FieldOptionsManager
+                categoria="equipe_apcl"
+                title="Equipe"
+                description="Opções para o campo 'Equipe' nas APCLs"
+                icon={<Users className="w-4 h-4" />}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

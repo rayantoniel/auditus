@@ -48,6 +48,7 @@ import { Search, Archive, RotateCcw, Eye, Trash2, Filter
  } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
+import { useFieldOptions } from "@/hooks/useFieldOptions";
 
 type Reclamacao = Tables<"reclamacoes">;
 
@@ -60,6 +61,9 @@ export default function Reclamacoes() {
   const [filterTipo, setFilterTipo] = useState<string>("all");
   const [filterConclusao, setFilterConclusao] = useState<string>("all");
   const queryClient = useQueryClient();
+  const { values: tipoOptions } = useFieldOptions("tipo_reclamacao");
+  const { values: conclusaoOptions } = useFieldOptions("conclusao_reclamacao");
+  const { values: equipeOptions } = useFieldOptions("equipe_reclamacao");
 
   const { data: reclamacoes = [], isLoading } = useQuery({
     queryKey: ["reclamacoes"],
@@ -184,8 +188,10 @@ export default function Reclamacoes() {
   };
 
   // Get unique values for filters
-  const tiposUnicos = [...new Set(reclamacoes.map(r => r.tipo_reclamacao).filter(Boolean))];
-  const conclusoesUnicas = [...new Set(reclamacoes.map(r => r.conclusao).filter(Boolean))];
+  // Combine stored options with unique values from data
+  const tiposUnicos = [...new Set([...tipoOptions, ...reclamacoes.map(r => r.tipo_reclamacao).filter(Boolean) as string[]])];
+  const conclusoesUnicas = [...new Set([...conclusaoOptions, ...reclamacoes.map(r => r.conclusao).filter(Boolean) as string[]])];
+  const equipesUnicas = [...new Set([...equipeOptions, ...reclamacoes.map(r => r.equipe_responsavel).filter(Boolean) as string[]])];
 
   const ativas = reclamacoes.filter(r => !r.arquivada);
   const respondidas = reclamacoes.filter(r => r.arquivada);
@@ -390,6 +396,8 @@ export default function Reclamacoes() {
                   <TableCell>
                     <EditableCell
                       value={reclamacao.equipe_responsavel}
+                      type="select"
+                      options={equipesUnicas}
                       onSave={(v) => handleCellUpdate(reclamacao.id, "equipe_responsavel", v)}
                     />
                   </TableCell>
