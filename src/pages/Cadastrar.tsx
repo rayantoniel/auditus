@@ -43,6 +43,7 @@ export default function Cadastrar() {
     prazo: "",
     cidade: "",
     tipo_reclamacao: "",
+    conclusao: "",
     equipe_responsavel: "",
     observacoes: "",
   });
@@ -72,6 +73,7 @@ export default function Cadastrar() {
         prazo: reclamacaoForm.prazo || null,
         cidade: reclamacaoForm.cidade || null,
         tipo_reclamacao: reclamacaoForm.tipo_reclamacao || null,
+        conclusao: reclamacaoForm.conclusao || null,
         equipe_responsavel: reclamacaoForm.equipe_responsavel || null,
         observacoes: reclamacaoForm.observacoes || null,
       });
@@ -90,6 +92,7 @@ export default function Cadastrar() {
         prazo: "",
         cidade: "",
         tipo_reclamacao: "",
+        conclusao: "",
         equipe_responsavel: "",
         observacoes: "",
       });
@@ -298,6 +301,26 @@ export default function Cadastrar() {
                           <SelectContent>
                             <SelectItem value="__clear__"><span className="text-muted-foreground italic">Limpar</span></SelectItem>
                             {equipeRecOptions.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="conclusao_rec">Conclusão</Label>
+                        <Select
+                          value={reclamacaoForm.conclusao}
+                          onValueChange={(v) => setReclamacaoForm({ ...reclamacaoForm, conclusao: v === "__clear__" ? "" : v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar conclusão..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__clear__"><span className="text-muted-foreground italic">Limpar</span></SelectItem>
+                            {conclusaoRecOptions.map((opt) => (
                               <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                             ))}
                           </SelectContent>
