@@ -47,6 +47,7 @@ import { ptBR } from "date-fns/locale";
 import { Search, Archive, RotateCcw, Eye, CheckCircle, AlertCircle, Trash2, Filter } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
+import { useFieldOptions } from "@/hooks/useFieldOptions";
 
 type APCL = Tables<"apcl">;
 
@@ -59,6 +60,9 @@ export default function APCLPage() {
   const [filterOrigem, setFilterOrigem] = useState<string>("all");
   const [filterConclusao, setFilterConclusao] = useState<string>("all");
   const queryClient = useQueryClient();
+  const { values: origemOptions } = useFieldOptions("origem_apcl");
+  const { values: conclusaoOptions } = useFieldOptions("conclusao_apcl");
+  const { values: equipeOptions } = useFieldOptions("equipe_apcl");
 
   const { data: apcls = [], isLoading } = useQuery({
     queryKey: ["apcl"],
@@ -179,8 +183,9 @@ export default function APCLPage() {
   };
 
   // Get unique values for filters
-  const origensUnicas = [...new Set(apcls.map(a => a.origem).filter(Boolean))];
-  const conclusoesUnicas = [...new Set(apcls.map(a => a.conclusao).filter(Boolean))];
+  const origensUnicas = [...new Set([...origemOptions, ...apcls.map(a => a.origem).filter(Boolean) as string[]])];
+  const conclusoesUnicas = [...new Set([...conclusaoOptions, ...apcls.map(a => a.conclusao).filter(Boolean) as string[]])];
+  const equipesUnicas = [...new Set([...equipeOptions, ...apcls.map(a => a.equipe).filter(Boolean) as string[]])];
 
   const ativas = apcls.filter(a => !a.arquivada);
   const respondidas = apcls.filter(a => a.arquivada);
@@ -392,10 +397,12 @@ export default function APCLPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <EditableCell
-                        value={apcl.equipe}
-                        onSave={(v) => handleCellUpdate(apcl.id, "equipe", v)}
-                      />
+                    <EditableCell
+                      value={apcl.equipe}
+                      type="select"
+                      options={equipesUnicas}
+                      onSave={(v) => handleCellUpdate(apcl.id, "equipe", v)}
+                    />
                     </TableCell>
                     <TableCell>
                       <EditableCell

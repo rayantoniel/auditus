@@ -83,6 +83,27 @@ export type Database = {
         }
         Relationships: []
       }
+      opcoes_campos: {
+        Row: {
+          categoria: string
+          created_at: string
+          id: string
+          valor: string
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          id?: string
+          valor: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          id?: string
+          valor?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
