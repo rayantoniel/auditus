@@ -44,12 +44,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search, Archive, RotateCcw, Eye, CheckCircle, AlertCircle, Trash2, Filter } from "lucide-react";
+import { Search, Archive, RotateCcw, Eye, CheckCircle, AlertCircle, Trash2, Filter, ArrowUp, ArrowDown, ArrowUpDown, GripVertical } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
 import { useFieldOptions } from "@/hooks/useFieldOptions";
 
 type APCL = Tables<"apcl">;
+
+type SortConfig = {
+  field: "prazo_resposta" | "data_visita" | "manual";
+  direction: "asc" | "desc";
+};
 
 export default function APCLPage() {
   const [search, setSearch] = useState("");
@@ -59,6 +64,7 @@ export default function APCLPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [filterOrigem, setFilterOrigem] = useState<string>("all");
   const [filterConclusao, setFilterConclusao] = useState<string>("all");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: "prazo_resposta", direction: "desc" });
   const queryClient = useQueryClient();
   const { values: origemOptions } = useFieldOptions("origem_apcl");
   const { values: conclusaoOptions } = useFieldOptions("conclusao_apcl");
@@ -149,6 +155,28 @@ export default function APCLPage() {
     },
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from("apcl")
+          .update({ sort_order: u.sort_order })
+          .eq("id", u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["apcl"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível reordenar.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCellUpdate = async (id: string, field: string, value: unknown) => {
     await updateMutation.mutateAsync({ id, field, value });
   };
@@ -180,6 +208,64 @@ export default function APCLPage() {
   const confirmDelete = () => {
     deleteMutation.mutate(Array.from(selectedIds));
     setShowDeleteDialog(false);
+  };
+
+  const handleSort = (field: SortConfig["field"]) => {
+    if (field === "manual") {
+      setSortConfig({ field: "manual", direction: "asc" });
+      return;
+    }
+    setSortConfig(prev => {
+      if (prev.field === field) {
+        return { field, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { field, direction: "desc" };
+    });
+  };
+
+  const handleMoveRow = (data: APCL[], index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= data.length) return;
+
+    const currentItem = data[index];
+    const targetItem = data[targetIndex];
+
+    const currentOrder = (currentItem as any).sort_order ?? index;
+    const targetOrder = (targetItem as any).sort_order ?? targetIndex;
+
+    reorderMutation.mutate([
+      { id: currentItem.id, sort_order: targetOrder },
+      { id: targetItem.id, sort_order: currentOrder },
+    ]);
+  };
+
+  const sortData = (list: APCL[]) => {
+    const sorted = [...list];
+    if (sortConfig.field === "manual") {
+      sorted.sort((a, b) => {
+        const aOrder = (a as any).sort_order ?? 0;
+        const bOrder = (b as any).sort_order ?? 0;
+        return aOrder - bOrder;
+      });
+      return sorted;
+    }
+    sorted.sort((a, b) => {
+      const aVal = a[sortConfig.field] as string | null;
+      const bVal = b[sortConfig.field] as string | null;
+      if (!aVal && !bVal) return 0;
+      if (!aVal) return 1;
+      if (!bVal) return -1;
+      const cmp = aVal.localeCompare(bVal);
+      return sortConfig.direction === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  };
+
+  const SortIcon = ({ field }: { field: SortConfig["field"] }) => {
+    if (sortConfig.field !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    return sortConfig.direction === "asc" 
+      ? <ArrowUp className="w-3 h-3 ml-1" /> 
+      : <ArrowDown className="w-3 h-3 ml-1" />;
   };
 
   // Get unique values for filters
@@ -220,7 +306,6 @@ export default function APCLPage() {
   const filterAPCL = (list: APCL[]) => {
     let filtered = list;
     
-    // Text search
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter(a => 
@@ -232,17 +317,15 @@ export default function APCLPage() {
       );
     }
     
-    // Filter by origem
     if (filterOrigem !== "all") {
       filtered = filtered.filter(a => a.origem === filterOrigem);
     }
     
-    // Filter by conclusao
     if (filterConclusao !== "all") {
       filtered = filtered.filter(a => a.conclusao === filterConclusao);
     }
     
-    return filtered;
+    return sortData(filtered);
   };
 
   const formatDate = (date: string | null) => {
@@ -260,6 +343,7 @@ export default function APCLPage() {
   const APCLTable = ({ data }: { data: APCL[] }) => {
     const duplicates = getDuplicateKeys(data);
     const allSelected = data.length > 0 && data.every(a => selectedIds.has(a.id));
+    const isManualSort = sortConfig.field === "manual";
     
     return (
       <div className="rounded-lg border bg-card overflow-hidden">
@@ -274,14 +358,31 @@ export default function APCLPage() {
                   aria-label="Selecionar todos"
                 />
               </TableHead>
+              {isManualSort && <TableHead className="w-[70px]">Ordem</TableHead>}
               <TableHead className="min-w-[100px]">Origem</TableHead>
               <TableHead className="min-w-[80px]">Código</TableHead>
               <TableHead className="min-w-[80px]">Nota AV</TableHead>
               <TableHead className="min-w-[80px]">Nota FS</TableHead>
               <TableHead className="min-w-[100px]">UC</TableHead>
-              <TableHead className="min-w-[120px]">Prazo Resp.</TableHead>
+              <TableHead 
+                className="min-w-[120px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("prazo_resposta")}
+              >
+                <div className="flex items-center">
+                  Prazo Resp.
+                  <SortIcon field="prazo_resposta" />
+                </div>
+              </TableHead>
               <TableHead className="min-w-[120px]">Cidade</TableHead>
-              <TableHead className="min-w-[120px]">Data Visita</TableHead>
+              <TableHead 
+                className="min-w-[120px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("data_visita")}
+              >
+                <div className="flex items-center">
+                  Data Visita
+                  <SortIcon field="data_visita" />
+                </div>
+              </TableHead>
               <TableHead className="min-w-[100px]">Status</TableHead>
               <TableHead className="min-w-[120px]">Visitado</TableHead>
               <TableHead className="min-w-[120px]">Equipe</TableHead>
@@ -296,12 +397,12 @@ export default function APCLPage() {
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={18} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={isManualSort ? 20 : 19} className="text-center py-8 text-muted-foreground">
                   Nenhuma APCL encontrada
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((apcl) => {
+              data.map((apcl, index) => {
                 const prazoStatus = getPrazoStatus(apcl.data_visita);
                 const isDuplicate = hasDuplicate(apcl, duplicates);
                 const isSelected = selectedIds.has(apcl.id);
@@ -317,6 +418,30 @@ export default function APCLPage() {
                         aria-label="Selecionar"
                       />
                     </TableCell>
+                    {isManualSort && (
+                      <TableCell>
+                        <div className="flex items-center gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={index === 0 || reorderMutation.isPending}
+                            onClick={() => handleMoveRow(data, index, "up")}
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            disabled={index === data.length - 1 || reorderMutation.isPending}
+                            onClick={() => handleMoveRow(data, index, "down")}
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <EditableCell
                         value={apcl.origem}
@@ -551,6 +676,15 @@ export default function APCLPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              variant={sortConfig.field === "manual" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSort("manual")}
+              className="gap-1"
+            >
+              <GripVertical className="w-4 h-4" />
+              Ordem manual
+            </Button>
           </div>
         </div>
 

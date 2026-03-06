@@ -44,13 +44,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search, Archive, RotateCcw, Eye, Trash2, Filter
- } from "lucide-react";
+import { Search, Archive, RotateCcw, Eye, Trash2, Filter, ArrowUp, ArrowDown, ArrowUpDown, GripVertical } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
 import { useFieldOptions } from "@/hooks/useFieldOptions";
 
 type Reclamacao = Tables<"reclamacoes">;
+
+type SortConfig = {
+  field: "prazo" | "data_visita" | "respondido_em" | "manual";
+  direction: "asc" | "desc";
+};
 
 export default function Reclamacoes() {
   const [search, setSearch] = useState("");
@@ -60,6 +64,7 @@ export default function Reclamacoes() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [filterTipo, setFilterTipo] = useState<string>("all");
   const [filterConclusao, setFilterConclusao] = useState<string>("all");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: "prazo", direction: "desc" });
   const queryClient = useQueryClient();
   const { values: tipoOptions } = useFieldOptions("tipo_reclamacao");
   const { values: conclusaoOptions } = useFieldOptions("conclusao_reclamacao");
@@ -154,6 +159,28 @@ export default function Reclamacoes() {
     },
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from("reclamacoes")
+          .update({ sort_order: u.sort_order })
+          .eq("id", u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reclamacoes"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível reordenar.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCellUpdate = async (id: string, field: string, value: unknown) => {
     await updateMutation.mutateAsync({ id, field, value });
   };
@@ -187,8 +214,65 @@ export default function Reclamacoes() {
     setShowDeleteDialog(false);
   };
 
+  const handleSort = (field: SortConfig["field"]) => {
+    if (field === "manual") {
+      setSortConfig({ field: "manual", direction: "asc" });
+      return;
+    }
+    setSortConfig(prev => {
+      if (prev.field === field) {
+        return { field, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { field, direction: "desc" };
+    });
+  };
+
+  const handleMoveRow = (data: Reclamacao[], index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= data.length) return;
+
+    const currentItem = data[index];
+    const targetItem = data[targetIndex];
+
+    const currentOrder = (currentItem as any).sort_order ?? index;
+    const targetOrder = (targetItem as any).sort_order ?? targetIndex;
+
+    reorderMutation.mutate([
+      { id: currentItem.id, sort_order: targetOrder },
+      { id: targetItem.id, sort_order: currentOrder },
+    ]);
+  };
+
+  const sortData = (list: Reclamacao[]) => {
+    const sorted = [...list];
+    if (sortConfig.field === "manual") {
+      sorted.sort((a, b) => {
+        const aOrder = (a as any).sort_order ?? 0;
+        const bOrder = (b as any).sort_order ?? 0;
+        return aOrder - bOrder;
+      });
+      return sorted;
+    }
+    sorted.sort((a, b) => {
+      const aVal = a[sortConfig.field] as string | null;
+      const bVal = b[sortConfig.field] as string | null;
+      if (!aVal && !bVal) return 0;
+      if (!aVal) return 1;
+      if (!bVal) return -1;
+      const cmp = aVal.localeCompare(bVal);
+      return sortConfig.direction === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  };
+
+  const SortIcon = ({ field }: { field: SortConfig["field"] }) => {
+    if (sortConfig.field !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    return sortConfig.direction === "asc" 
+      ? <ArrowUp className="w-3 h-3 ml-1" /> 
+      : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
+
   // Get unique values for filters
-  // Combine stored options with unique values from data
   const tiposUnicos = [...new Set([...tipoOptions, ...reclamacoes.map(r => r.tipo_reclamacao).filter(Boolean) as string[]])];
   const conclusoesUnicas = [...new Set([...conclusaoOptions, ...reclamacoes.map(r => r.conclusao).filter(Boolean) as string[]])];
   const equipesUnicas = [...new Set([...equipeOptions, ...reclamacoes.map(r => r.equipe_responsavel).filter(Boolean) as string[]])];
@@ -226,7 +310,6 @@ export default function Reclamacoes() {
   const filterReclamacoes = (list: Reclamacao[]) => {
     let filtered = list;
     
-    // Text search
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter(r => 
@@ -238,17 +321,15 @@ export default function Reclamacoes() {
       );
     }
     
-    // Filter by tipo
     if (filterTipo !== "all") {
       filtered = filtered.filter(r => r.tipo_reclamacao === filterTipo);
     }
     
-    // Filter by conclusao
     if (filterConclusao !== "all") {
       filtered = filtered.filter(r => r.conclusao === filterConclusao);
     }
     
-    return filtered;
+    return sortData(filtered);
   };
 
   const formatDate = (date: string | null) => {
@@ -259,7 +340,7 @@ export default function Reclamacoes() {
   const ReclamacaoTable = ({ data }: { data: Reclamacao[] }) => {
     const duplicates = getDuplicateKeys(data);
     const allSelected = data.length > 0 && data.every(r => selectedIds.has(r.id));
-    const someSelected = data.some(r => selectedIds.has(r.id));
+    const isManualSort = sortConfig.field === "manual";
     
     return (
     <div className="rounded-lg border bg-card overflow-hidden">
@@ -274,17 +355,42 @@ export default function Reclamacoes() {
                   aria-label="Selecionar todos"
                 />
               </TableHead>
+              {isManualSort && <TableHead className="w-[70px]">Ordem</TableHead>}
               <TableHead className="min-w-[80px]">Cod</TableHead>
               <TableHead className="min-w-[80px]">Nota RC</TableHead>
               <TableHead className="min-w-[80px]">Nota FS</TableHead>
               <TableHead className="min-w-[100px]">Instalação</TableHead>
-              <TableHead className="min-w-[120px]">Prazo</TableHead>
+              <TableHead 
+                className="min-w-[120px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("prazo")}
+              >
+                <div className="flex items-center">
+                  Prazo
+                  <SortIcon field="prazo" />
+                </div>
+              </TableHead>
               <TableHead className="min-w-[120px]">Cidade</TableHead>
               <TableHead className="min-w-[150px]">Tipo</TableHead>
               <TableHead className="min-w-[150px]">Conclusão</TableHead>
               <TableHead className="min-w-[130px]">Resolução</TableHead>
-              <TableHead className="min-w-[120px]">Respondido em</TableHead>
-              <TableHead className="min-w-[120px]">Data Visita</TableHead>
+              <TableHead 
+                className="min-w-[120px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("respondido_em")}
+              >
+                <div className="flex items-center">
+                  Respondido em
+                  <SortIcon field="respondido_em" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="min-w-[120px] cursor-pointer select-none hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("data_visita")}
+              >
+                <div className="flex items-center">
+                  Data Visita
+                  <SortIcon field="data_visita" />
+                </div>
+              </TableHead>
               <TableHead className="min-w-[120px]">Equipe</TableHead>
               <TableHead className="min-w-[200px]">Observações</TableHead>
               <TableHead className="min-w-[100px]">Ações</TableHead>
@@ -293,12 +399,12 @@ export default function Reclamacoes() {
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={isManualSort ? 17 : 16} className="text-center py-8 text-muted-foreground">
                   Nenhuma reclamação encontrada
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((reclamacao) => {
+              data.map((reclamacao, index) => {
                 const isDuplicate = hasDuplicate(reclamacao, duplicates);
                 const isSelected = selectedIds.has(reclamacao.id);
                 return (
@@ -313,6 +419,30 @@ export default function Reclamacoes() {
                       aria-label="Selecionar"
                     />
                   </TableCell>
+                  {isManualSort && (
+                    <TableCell>
+                      <div className="flex items-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          disabled={index === 0 || reorderMutation.isPending}
+                          onClick={() => handleMoveRow(data, index, "up")}
+                        >
+                          <ArrowUp className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          disabled={index === data.length - 1 || reorderMutation.isPending}
+                          onClick={() => handleMoveRow(data, index, "down")}
+                        >
+                          <ArrowDown className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                   <TableCell className="font-mono">
                     <EditableCell
                       value={reclamacao.cod}
@@ -520,6 +650,15 @@ export default function Reclamacoes() {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              variant={sortConfig.field === "manual" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleSort("manual")}
+              className="gap-1"
+            >
+              <GripVertical className="w-4 h-4" />
+              Ordem manual
+            </Button>
           </div>
         </div>
 

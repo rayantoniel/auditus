@@ -31,6 +31,7 @@ export type Database = {
           origem: string | null
           prazo_resposta: string | null
           resolucao: string | null
+          sort_order: number | null
           tratativa: string | null
           unidade_consumidora: number | null
           updated_at: string
@@ -53,6 +54,7 @@ export type Database = {
           origem?: string | null
           prazo_resposta?: string | null
           resolucao?: string | null
+          sort_order?: number | null
           tratativa?: string | null
           unidade_consumidora?: number | null
           updated_at?: string
@@ -75,6 +77,7 @@ export type Database = {
           origem?: string | null
           prazo_resposta?: string | null
           resolucao?: string | null
+          sort_order?: number | null
           tratativa?: string | null
           unidade_consumidora?: number | null
           updated_at?: string
@@ -151,6 +154,7 @@ export type Database = {
           prazo: string | null
           resolucao: string | null
           respondido_em: string | null
+          sort_order: number | null
           tipo_reclamacao: string | null
           updated_at: string
           user_id: string
@@ -171,6 +175,7 @@ export type Database = {
           prazo?: string | null
           resolucao?: string | null
           respondido_em?: string | null
+          sort_order?: number | null
           tipo_reclamacao?: string | null
           updated_at?: string
           user_id: string
@@ -191,6 +196,7 @@ export type Database = {
           prazo?: string | null
           resolucao?: string | null
           respondido_em?: string | null
+          sort_order?: number | null
           tipo_reclamacao?: string | null
           updated_at?: string
           user_id?: string
