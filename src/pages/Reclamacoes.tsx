@@ -87,7 +87,8 @@ export default function Reclamacoes() {
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: unknown }) => {
       const { error } = await supabase
         .from("reclamacoes")
-        .update({ [field]: value })
+        // cast to Partial<Reclamacao> to satisfy supabase typed update signature
+        .update({ [field]: value } as Partial<Reclamacao>)
         .eq("id", id);
       
       if (error) throw error;

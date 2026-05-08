@@ -57,7 +57,7 @@ export default function Dashboard() {
   const reclamacoesRespondidas = reclamacoes.filter(r => r.respondido_em).length;
   
   const reclamacoesSemCampo = reclamacoes.filter(r => 
-    r.respondido_em && !r.data_visita
+    r.respondido_em && !r.data_visita && !r.conclusao
   ).length;
 
   // Instalações reincidentes
