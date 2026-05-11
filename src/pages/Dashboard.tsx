@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, subMonths, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
@@ -57,7 +57,7 @@ export default function Dashboard() {
   const reclamacoesRespondidas = reclamacoes.filter(r => r.respondido_em).length;
   
   const reclamacoesSemCampo = reclamacoes.filter(r => 
-    r.respondido_em && !r.data_visita && !r.conclusao
+    r.respondido_em && !r.data_visita && (!r.conclusao || r.conclusao.trim() === '')
   ).length;
 
   // Instalações reincidentes
@@ -153,7 +153,7 @@ export default function Dashboard() {
 
   const responsesByDay = last7Days.map(({ date, fullDate }) => {
     const count = reclamacoes.filter(r => 
-      r.respondido_em && format(new Date(r.respondido_em), "yyyy-MM-dd") === fullDate
+      r.respondido_em && format(parseISO(r.respondido_em), "yyyy-MM-dd") === fullDate
     ).length;
     return { date, count };
   });
@@ -177,7 +177,7 @@ export default function Dashboard() {
     
     const apclCount = apcls.filter(a => {
       if (!a.arquivada) return false;
-      const date = new Date(a.updated_at);
+      const date = new Date(a.data_visita);
       return date >= start && date <= end;
     }).length;
     
@@ -203,7 +203,7 @@ export default function Dashboard() {
           <StatCard
             title="Total de Reclamações"
             value={totalReclamacoes}
-            subtitle="Este mês"
+            subtitle="Todo o período"
             icon={<FileWarning className="w-6 h-6" />}
             variant="primary"
           />
