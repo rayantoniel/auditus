@@ -69,7 +69,7 @@ export default function Cadastro() {
             <FileWarning className="w-7 h-7 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">GestãoRC</h1>
+            <h1 className="text-2xl font-bold text-foreground">Auditus</h1>
             <p className="text-sm text-muted-foreground">Sistema de Reclamações</p>
           </div>
         </div>
