@@ -7,7 +7,7 @@ interface ResponsesChartProps {
 export function ResponsesChart({ data }: ResponsesChartProps) {
   return (
     <div className="stat-card h-80 animate-fade-in">
-      <h3 className="text-lg font-semibold text-foreground mb-4">Reclamações Respondidas por Dia</h3>
+      <h3 className="text-lg font-semibold text-foreground mb-4">Reclamações Respondidas por Mês</h3>
       <ResponsiveContainer width="100%" height="85%">
         <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
           <defs>

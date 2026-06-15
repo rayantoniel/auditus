@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
-import { startOfMonth, endOfMonth, isBefore } from "date-fns";
+import { isBefore } from "date-fns";
 import { FileWarning, ClipboardCheck } from "lucide-react";
 
 type Reclamacao = Tables<"reclamacoes">;
@@ -9,25 +9,12 @@ type APCL = Tables<"apcl">;
 interface DashboardSummaryProps {
   reclamacoes: Reclamacao[];
   apcls: APCL[];
+  title?: string;
 }
 
-export function DashboardSummary({ reclamacoes, apcls }: DashboardSummaryProps) {
-  const now = new Date();
-  const startMonth = startOfMonth(now);
-  const endMonth = endOfMonth(now);
-
-  // Filter current month
-  const recMes = reclamacoes.filter(r => {
-    if (!r.created_at) return false;
-    const d = new Date(r.created_at);
-    return d >= startMonth && d <= endMonth;
-  });
-
-  const apclMes = apcls.filter(a => {
-    if (!a.created_at) return false;
-    const d = new Date(a.created_at);
-    return d >= startMonth && d <= endMonth;
-  });
+export function DashboardSummary({ reclamacoes, apcls, title = "Resumo" }: DashboardSummaryProps) {
+  const recMes = reclamacoes;
+  const apclMes = apcls;
 
   // Cod counts
   const recCod100 = recMes.filter(r => r.cod === 100).length;
@@ -73,7 +60,7 @@ export function DashboardSummary({ reclamacoes, apcls }: DashboardSummaryProps) 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-medium">Resumo do Mês</CardTitle>
+        <CardTitle className="text-base font-medium">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-hidden rounded-lg border">

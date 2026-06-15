@@ -1,4 +1,12 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { useState, useMemo } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ResponsesChart } from "@/components/dashboard/ResponsesChart";
 import { MonthlyResponsesChart } from "@/components/dashboard/MonthlyResponsesChart";
@@ -15,13 +23,14 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, startOfMonth, endOfMonth, subMonths, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
-  const currentMonth = new Date();
-  const startMonth = startOfMonth(currentMonth);
-  const endMonth = endOfMonth(currentMonth);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  // "year" or "0".."11" (month index)
+  const [period, setPeriod] = useState<string>(String(now.getMonth()));
 
   // Fetch reclamações
   const { data: reclamacoes = [] } = useQuery({
@@ -51,37 +60,63 @@ export default function Dashboard() {
     },
   });
 
-  // Calculate metrics
-  const totalReclamacoes = reclamacoes.length;
-  
-  const reclamacoesRespondidas = reclamacoes.filter(r => r.respondido_em).length;
-  
-  const reclamacoesSemCampo = reclamacoes.filter(r => 
-    r.respondido_em && !r.data_visita && (!r.conclusao || r.conclusao.trim() === '')
+  // Period range
+  const { rangeStart, rangeEnd, periodLabel } = useMemo(() => {
+    if (period === "year") {
+      const s = startOfYear(new Date(currentYear, 0, 1));
+      const e = endOfYear(new Date(currentYear, 11, 31));
+      return { rangeStart: s, rangeEnd: e, periodLabel: `Ano ${currentYear} (acumulado)` };
+    }
+    const m = parseInt(period, 10);
+    const ref = new Date(currentYear, m, 1);
+    return {
+      rangeStart: startOfMonth(ref),
+      rangeEnd: endOfMonth(ref),
+      periodLabel: format(ref, "MMMM yyyy", { locale: ptBR }),
+    };
+  }, [period, currentYear]);
+
+  const inRange = (d: string | null | undefined) => {
+    if (!d) return false;
+    const date = new Date(d);
+    return date >= rangeStart && date <= rangeEnd;
+  };
+
+  // Filtered datasets (by created_at in selected period)
+  const reclamacoesFiltradas = useMemo(
+    () => reclamacoes.filter(r => inRange(r.created_at)),
+    [reclamacoes, rangeStart, rangeEnd]
+  );
+  const apclsFiltradas = useMemo(
+    () => apcls.filter(a => inRange(a.created_at)),
+    [apcls, rangeStart, rangeEnd]
+  );
+
+  // Calculate metrics (scoped to period)
+  const totalReclamacoes = reclamacoesFiltradas.length;
+
+  const reclamacoesRespondidas = reclamacoesFiltradas.filter(r => r.respondido_em).length;
+
+  const reclamacoesSemCampo = reclamacoesFiltradas.filter(r =>
+    r.respondido_em && !r.data_visita
   ).length;
 
   // Instalações reincidentes
   const instalacaoCount: Record<number, number> = {};
-  reclamacoes.forEach(r => {
+  reclamacoesFiltradas.forEach(r => {
     if (r.instalacao) {
       instalacaoCount[r.instalacao] = (instalacaoCount[r.instalacao] || 0) + 1;
     }
   });
   const instalacoesReincidentes = Object.values(instalacaoCount).filter(c => c > 1).length;
 
-  // Top cities
+  // Top cities (scoped to period)
   const cidadeCount: Record<string, number> = {};
-  reclamacoes
-    .filter(r => {
-      if (!r.created_at) return false;
-      const date = new Date(r.created_at);
-      return date >= startMonth && date <= endMonth;
-    })
-    .forEach(r => {
-      if (r.cidade) {
-        cidadeCount[r.cidade] = (cidadeCount[r.cidade] || 0) + 1;
-      }
-    });
+  reclamacoesFiltradas.forEach(r => {
+    if (r.cidade) {
+      cidadeCount[r.cidade] = (cidadeCount[r.cidade] || 0) + 1;
+    }
+  });
   
   const topCities = Object.entries(cidadeCount)
     .sort(([, a], [, b]) => b - a)
@@ -93,7 +128,7 @@ export default function Dashboard() {
 
   // Top motivos (tipos de reclamação)
   const motivoCount: Record<string, number> = {};
-  reclamacoes.forEach(r => {
+  reclamacoesFiltradas.forEach(r => {
     if (r.tipo_reclamacao) {
       motivoCount[r.tipo_reclamacao] = (motivoCount[r.tipo_reclamacao] || 0) + 1;
     }
@@ -110,7 +145,7 @@ export default function Dashboard() {
 
   // Top conclusões de reclamações
   const conclusaoRecCount: Record<string, number> = {};
-  reclamacoes.forEach(r => {
+  reclamacoesFiltradas.forEach(r => {
     if (r.conclusao) {
       conclusaoRecCount[r.conclusao] = (conclusaoRecCount[r.conclusao] || 0) + 1;
     }
@@ -122,12 +157,12 @@ export default function Dashboard() {
     .map(([name, count]) => ({
       name,
       count,
-      percentage: Math.round((count / reclamacoes.filter(r => r.conclusao).length) * 100) || 0,
+      percentage: Math.round((count / reclamacoesFiltradas.filter(r => r.conclusao).length) * 100) || 0,
     }));
 
   // Top conclusões de APCL
   const conclusaoApclCount: Record<string, number> = {};
-  apcls.forEach(a => {
+  apclsFiltradas.forEach(a => {
     if (a.conclusao) {
       conclusaoApclCount[a.conclusao] = (conclusaoApclCount[a.conclusao] || 0) + 1;
     }
@@ -139,71 +174,90 @@ export default function Dashboard() {
     .map(([name, count]) => ({
       name,
       count,
-      percentage: Math.round((count / apcls.filter(a => a.conclusao).length) * 100) || 0,
+      percentage: Math.round((count / apclsFiltradas.filter(a => a.conclusao).length) * 100) || 0,
     }));
 
-  // Responses by day (last 7 days)
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = subDays(new Date(), 6 - i);
+  // Responses by month — todos os meses do ano corrente
+  const monthsOfYear = Array.from({ length: 12 }, (_, i) => {
+    const date = new Date(currentYear, i, 1);
     return {
-      date: format(date, "dd/MM", { locale: ptBR }),
-      fullDate: format(date, "yyyy-MM-dd"),
-    };
-  });
-
-  const responsesByDay = last7Days.map(({ date, fullDate }) => {
-    const count = reclamacoes.filter(r => 
-      r.respondido_em && format(parseISO(r.respondido_em), "yyyy-MM-dd") === fullDate
-    ).length;
-    return { date, count };
-  });
-
-  // Responses by month (last 6 months)
-  const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const date = subMonths(new Date(), 5 - i);
-    return {
-      month: format(date, "MMM/yy", { locale: ptBR }),
+      month: format(date, "MMM", { locale: ptBR }),
       start: startOfMonth(date),
       end: endOfMonth(date),
     };
   });
 
-  const responsesByMonth = last6Months.map(({ month, start, end }) => {
+  const responsesByDay = monthsOfYear.map(({ month, start, end }) => {
+    const count = reclamacoes.filter(r => {
+      if (!r.respondido_em) return false;
+      const date = new Date(r.respondido_em);
+      return date >= start && date <= end;
+    }).length;
+    return { date: month, count };
+  });
+
+  const responsesByMonth = monthsOfYear.map(({ month, start, end }) => {
     const reclamacoesCount = reclamacoes.filter(r => {
       if (!r.respondido_em) return false;
       const date = new Date(r.respondido_em);
       return date >= start && date <= end;
     }).length;
-    
+
     const apclCount = apcls.filter(a => {
-      if (!a.arquivada) return false;
-      const date = new Date(a.data_visita);
+      if (!a.arquivada || !a.updated_at) return false;
+      const date = new Date(a.updated_at);
       return date >= start && date <= end;
     }).length;
-    
+
     return { month, reclamacoes: reclamacoesCount, apcl: apclCount };
   });
+
+  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
+    value: String(i),
+    label: format(new Date(currentYear, i, 1), "MMMM", { locale: ptBR }),
+  }));
 
   return (
     <MainLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Visão geral das reclamações - {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+            <p className="text-muted-foreground mt-1 capitalize">
+              Visão geral - {periodLabel}
+            </p>
+          </div>
+          <div className="w-full sm:w-64">
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="year">Ano {currentYear} (acumulado)</SelectItem>
+                {monthOptions.map(o => (
+                  <SelectItem key={o.value} value={o.value} className="capitalize">
+                    {o.label} {currentYear}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Summary Table */}
-        <DashboardSummary reclamacoes={reclamacoes} apcls={apcls} />
+        <DashboardSummary
+          reclamacoes={reclamacoesFiltradas}
+          apcls={apclsFiltradas}
+          title={period === "year" ? `Resumo Anual ${currentYear}` : `Resumo de ${periodLabel}`}
+        />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total de Reclamações"
             value={totalReclamacoes}
-            subtitle="Todo o período"
+            subtitle={period === "year" ? "No ano" : "No mês"}
             icon={<FileWarning className="w-6 h-6" />}
             variant="primary"
           />
