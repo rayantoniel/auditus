@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
@@ -82,13 +82,14 @@ export default function Dashboard() {
     return date >= rangeStart && date <= rangeEnd;
   };
 
-  // Filtered datasets (by created_at in selected period)
+  // Filtered datasets — usa a data da reclamação (prazo / prazo_resposta) e
+  // cai para created_at quando o campo estiver vazio.
   const reclamacoesFiltradas = useMemo(
-    () => reclamacoes.filter(r => inRange(r.created_at)),
+    () => reclamacoes.filter(r => inRange(r.prazo ?? r.created_at)),
     [reclamacoes, rangeStart, rangeEnd]
   );
   const apclsFiltradas = useMemo(
-    () => apcls.filter(a => inRange(a.created_at)),
+    () => apcls.filter(a => inRange(a.prazo_resposta ?? a.created_at)),
     [apcls, rangeStart, rangeEnd]
   );
 
@@ -187,14 +188,32 @@ export default function Dashboard() {
     };
   });
 
-  const responsesByDay = monthsOfYear.map(({ month, start, end }) => {
-    const count = reclamacoes.filter(r => {
-      if (!r.respondido_em) return false;
-      const date = new Date(r.respondido_em);
-      return date >= start && date <= end;
-    }).length;
-    return { date: month, count };
-  });
+  // Respondidas: quando "ano", uma barra por mês; quando mês, uma por dia do mês selecionado.
+  const responsesByDay = useMemo(() => {
+    if (period === "year") {
+      return monthsOfYear.map(({ month, start, end }) => {
+        const count = reclamacoes.filter(r => {
+          if (!r.respondido_em) return false;
+          const date = new Date(r.respondido_em);
+          return date >= start && date <= end;
+        }).length;
+        return { date: month, count };
+      });
+    }
+    const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+    return days.map(day => {
+      const count = reclamacoes.filter(r => {
+        if (!r.respondido_em) return false;
+        const d = new Date(r.respondido_em);
+        return (
+          d.getFullYear() === day.getFullYear() &&
+          d.getMonth() === day.getMonth() &&
+          d.getDate() === day.getDate()
+        );
+      }).length;
+      return { date: format(day, "dd"), count };
+    });
+  }, [period, reclamacoes, rangeStart, rangeEnd, monthsOfYear]);
 
   const responsesByMonth = monthsOfYear.map(({ month, start, end }) => {
     const reclamacoesCount = reclamacoes.filter(r => {
@@ -287,7 +306,14 @@ export default function Dashboard() {
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 gap-6">
-          <ResponsesChart data={responsesByDay} />
+          <ResponsesChart
+            data={responsesByDay}
+            title={
+              period === "year"
+                ? `Reclamações Respondidas por Mês — ${currentYear}`
+                : `Reclamações Respondidas por Dia — ${periodLabel}`
+            }
+          />
         </div>
 
         {/* Monthly Chart */}

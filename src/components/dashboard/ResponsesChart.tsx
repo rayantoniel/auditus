@@ -2,12 +2,13 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 interface ResponsesChartProps {
   data: { date: string; count: number }[];
+  title?: string;
 }
 
-export function ResponsesChart({ data }: ResponsesChartProps) {
+export function ResponsesChart({ data, title = "Reclamações Respondidas por Mês" }: ResponsesChartProps) {
   return (
     <div className="stat-card h-80 animate-fade-in">
-      <h3 className="text-lg font-semibold text-foreground mb-4">Reclamações Respondidas por Mês</h3>
+      <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height="85%">
         <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
           <defs>
