@@ -87,8 +87,7 @@ export default function Reclamacoes() {
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: unknown }) => {
       const { error } = await supabase
         .from("reclamacoes")
-        // cast to Partial<Reclamacao> to satisfy supabase typed update signature
-        .update({ [field]: value } as Partial<Reclamacao>)
+        .update({ [field]: value })
         .eq("id", id);
       
       if (error) throw error;
@@ -129,6 +128,56 @@ export default function Reclamacoes() {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar a reclamação.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkArchiveMutation = useMutation({
+    mutationFn: async ({ ids, arquivada }: { ids: string[]; arquivada: boolean }) => {
+      const today = new Date().toISOString().split("T")[0];
+      if (arquivada) {
+        // Para arquivar: setar respondido_em só nas que ainda não têm.
+        const semData = reclamacoes
+          .filter(r => ids.includes(r.id) && !r.respondido_em)
+          .map(r => r.id);
+        if (semData.length > 0) {
+          const { error } = await supabase
+            .from("reclamacoes")
+            .update({ arquivada: true, respondido_em: today })
+            .in("id", semData);
+          if (error) throw error;
+        }
+        const restantes = ids.filter(id => !semData.includes(id));
+        if (restantes.length > 0) {
+          const { error } = await supabase
+            .from("reclamacoes")
+            .update({ arquivada: true })
+            .in("id", restantes);
+          if (error) throw error;
+        }
+      } else {
+        const { error } = await supabase
+          .from("reclamacoes")
+          .update({ arquivada: false })
+          .in("id", ids);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["reclamacoes"] });
+      setSelectedIds(new Set());
+      toast({
+        title: "Sucesso",
+        description: vars.arquivada
+          ? `${vars.ids.length} reclamação(ões) arquivada(s).`
+          : `${vars.ids.length} reclamação(ões) desarquivada(s).`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível arquivar em massa.",
         variant: "destructive",
       });
     },
@@ -604,14 +653,44 @@ export default function Reclamacoes() {
           </div>
           <div className="flex items-center gap-2">
             {selectedIds.size > 0 && (
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={handleDeleteSelected}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Excluir ({selectedIds.size})
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    bulkArchiveMutation.mutate({
+                      ids: Array.from(selectedIds),
+                      arquivada: true,
+                    })
+                  }
+                  disabled={bulkArchiveMutation.isPending}
+                >
+                  <Archive className="w-4 h-4 mr-2" />
+                  Arquivar ({selectedIds.size})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    bulkArchiveMutation.mutate({
+                      ids: Array.from(selectedIds),
+                      arquivada: false,
+                    })
+                  }
+                  disabled={bulkArchiveMutation.isPending}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Desarquivar ({selectedIds.size})
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteSelected}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir ({selectedIds.size})
+                </Button>
+              </>
             )}
           </div>
         </div>
