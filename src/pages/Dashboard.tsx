@@ -26,6 +26,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+// Parse "YYYY-MM-DD" como data local (evita off-by-one por timezone).
+const parseLocalDate = (s: string | null | undefined): Date | null => {
+  if (!s) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 export default function Dashboard() {
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -77,8 +86,8 @@ export default function Dashboard() {
   }, [period, currentYear]);
 
   const inRange = (d: string | null | undefined) => {
-    if (!d) return false;
-    const date = new Date(d);
+    const date = parseLocalDate(d);
+    if (!date) return false;
     return date >= rangeStart && date <= rangeEnd;
   };
 
@@ -192,40 +201,44 @@ export default function Dashboard() {
   const responsesByDay = useMemo(() => {
     if (period === "year") {
       return monthsOfYear.map(({ month, start, end }) => {
-        const count = reclamacoes.filter(r => {
-          if (!r.respondido_em) return false;
-          const date = new Date(r.respondido_em);
-          return date >= start && date <= end;
+        const rec = reclamacoes.filter(r => {
+          const date = parseLocalDate(r.respondido_em);
+          return date !== null && date >= start && date <= end;
         }).length;
-        return { date: month, count };
+        const ap = apcls.filter(a => {
+          if (!a.arquivada) return false;
+          const date = parseLocalDate(a.data_visita) ?? parseLocalDate(a.updated_at);
+          return date !== null && date >= start && date <= end;
+        }).length;
+        return { date: month, count: rec + ap };
       });
     }
     const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
     return days.map(day => {
-      const count = reclamacoes.filter(r => {
-        if (!r.respondido_em) return false;
-        const d = new Date(r.respondido_em);
-        return (
-          d.getFullYear() === day.getFullYear() &&
-          d.getMonth() === day.getMonth() &&
-          d.getDate() === day.getDate()
-        );
+      const sameDay = (d: Date | null) =>
+        d !== null &&
+        d.getFullYear() === day.getFullYear() &&
+        d.getMonth() === day.getMonth() &&
+        d.getDate() === day.getDate();
+      const rec = reclamacoes.filter(r => sameDay(parseLocalDate(r.respondido_em))).length;
+      const ap = apcls.filter(a => {
+        if (!a.arquivada) return false;
+        return sameDay(parseLocalDate(a.data_visita) ?? parseLocalDate(a.updated_at));
       }).length;
-      return { date: format(day, "dd"), count };
+      return { date: format(day, "dd"), count: rec + ap };
     });
-  }, [period, reclamacoes, rangeStart, rangeEnd, monthsOfYear]);
+  }, [period, reclamacoes, apcls, rangeStart, rangeEnd, monthsOfYear]);
 
   const responsesByMonth = monthsOfYear.map(({ month, start, end }) => {
     const reclamacoesCount = reclamacoes.filter(r => {
-      if (!r.respondido_em) return false;
-      const date = new Date(r.respondido_em);
-      return date >= start && date <= end;
+      const date = parseLocalDate(r.respondido_em);
+      return date !== null && date >= start && date <= end;
     }).length;
 
     const apclCount = apcls.filter(a => {
-      if (!a.arquivada || !a.updated_at) return false;
-      const date = new Date(a.updated_at);
-      return date >= start && date <= end;
+      if (!a.arquivada) return false;
+      const date = parseLocalDate(a.data_visita) ?? parseLocalDate(a.updated_at);
+      return date !== null && date >= start && date <= end;
     }).length;
 
     return { month, reclamacoes: reclamacoesCount, apcl: apclCount };
