@@ -129,6 +129,33 @@ export default function APCLPage() {
     },
   });
 
+  const bulkArchiveMutation = useMutation({
+    mutationFn: async ({ ids, arquivada }: { ids: string[]; arquivada: boolean }) => {
+      const { error } = await supabase
+        .from("apcl")
+        .update({ arquivada })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["apcl"] });
+      setSelectedIds(new Set());
+      toast({
+        title: "Sucesso",
+        description: vars.arquivada
+          ? `${vars.ids.length} APCL(s) arquivada(s).`
+          : `${vars.ids.length} APCL(s) desarquivada(s).`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível arquivar em massa.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const { error } = await supabase
@@ -629,14 +656,44 @@ export default function APCLPage() {
           </div>
           <div className="flex items-center gap-2">
             {selectedIds.size > 0 && (
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={handleDeleteSelected}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Excluir ({selectedIds.size})
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    bulkArchiveMutation.mutate({
+                      ids: Array.from(selectedIds),
+                      arquivada: true,
+                    })
+                  }
+                  disabled={bulkArchiveMutation.isPending}
+                >
+                  <Archive className="w-4 h-4 mr-2" />
+                  Arquivar ({selectedIds.size})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    bulkArchiveMutation.mutate({
+                      ids: Array.from(selectedIds),
+                      arquivada: false,
+                    })
+                  }
+                  disabled={bulkArchiveMutation.isPending}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Desarquivar ({selectedIds.size})
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteSelected}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir ({selectedIds.size})
+                </Button>
+              </>
             )}
           </div>
         </div>
