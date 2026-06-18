@@ -1,12 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { useState, useMemo } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useMemo } from "react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ResponsesChart } from "@/components/dashboard/ResponsesChart";
 import { MonthlyResponsesChart } from "@/components/dashboard/MonthlyResponsesChart";
@@ -25,21 +18,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-
-// Parse "YYYY-MM-DD" como data local (evita off-by-one por timezone).
-const parseLocalDate = (s: string | null | undefined): Date | null => {
-  if (!s) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-};
+import { usePeriodFilter, PeriodFilter, parseLocalDate } from "@/hooks/usePeriodFilter";
 
 export default function Dashboard() {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  // "year" or "0".."11" (month index)
-  const [period, setPeriod] = useState<string>(String(now.getMonth()));
+  const { period, setPeriod, currentYear, rangeStart, rangeEnd, periodLabel, inRange } = usePeriodFilter();
 
   // Fetch reclamações
   const { data: reclamacoes = [] } = useQuery({
@@ -68,28 +50,6 @@ export default function Dashboard() {
       return data;
     },
   });
-
-  // Period range
-  const { rangeStart, rangeEnd, periodLabel } = useMemo(() => {
-    if (period === "year") {
-      const s = startOfYear(new Date(currentYear, 0, 1));
-      const e = endOfYear(new Date(currentYear, 11, 31));
-      return { rangeStart: s, rangeEnd: e, periodLabel: `Ano ${currentYear} (acumulado)` };
-    }
-    const m = parseInt(period, 10);
-    const ref = new Date(currentYear, m, 1);
-    return {
-      rangeStart: startOfMonth(ref),
-      rangeEnd: endOfMonth(ref),
-      periodLabel: format(ref, "MMMM yyyy", { locale: ptBR }),
-    };
-  }, [period, currentYear]);
-
-  const inRange = (d: string | null | undefined) => {
-    const date = parseLocalDate(d);
-    if (!date) return false;
-    return date >= rangeStart && date <= rangeEnd;
-  };
 
   // Filtered datasets — usa a data da reclamação (prazo / prazo_resposta) e
   // cai para created_at quando o campo estiver vazio.
@@ -244,11 +204,6 @@ export default function Dashboard() {
     return { month, reclamacoes: reclamacoesCount, apcl: apclCount };
   });
 
-  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    value: String(i),
-    label: format(new Date(currentYear, i, 1), "MMMM", { locale: ptBR }),
-  }));
-
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -260,21 +215,7 @@ export default function Dashboard() {
               Visão geral - {periodLabel}
             </p>
           </div>
-          <div className="w-full sm:w-64">
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="year">Ano {currentYear} (acumulado)</SelectItem>
-                {monthOptions.map(o => (
-                  <SelectItem key={o.value} value={o.value} className="capitalize">
-                    {o.label} {currentYear}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <PeriodFilter period={period} onChange={setPeriod} currentYear={currentYear} />
         </div>
 
         {/* Summary Table */}
