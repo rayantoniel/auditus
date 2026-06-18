@@ -166,8 +166,7 @@ export default function Dashboard() {
           return date !== null && date >= start && date <= end;
         }).length;
         const ap = apcls.filter(a => {
-          if (!a.arquivada) return false;
-          const date = parseLocalDate(a.data_visita) ?? parseLocalDate(a.updated_at);
+          const date = parseLocalDate(a.data_visita);
           return date !== null && date >= start && date <= end;
         }).length;
         return { date: month, count: rec + ap };
@@ -182,8 +181,7 @@ export default function Dashboard() {
         d.getDate() === day.getDate();
       const rec = reclamacoes.filter(r => sameDay(parseLocalDate(r.respondido_em))).length;
       const ap = apcls.filter(a => {
-        if (!a.arquivada) return false;
-        return sameDay(parseLocalDate(a.data_visita) ?? parseLocalDate(a.updated_at));
+        return sameDay(parseLocalDate(a.data_visita));
       }).length;
       return { date: format(day, "dd"), count: rec + ap };
     });
@@ -196,8 +194,7 @@ export default function Dashboard() {
     }).length;
 
     const apclCount = apcls.filter(a => {
-      if (!a.arquivada) return false;
-      const date = parseLocalDate(a.data_visita) ?? parseLocalDate(a.updated_at);
+      const date = parseLocalDate(a.data_visita);
       return date !== null && date >= start && date <= end;
     }).length;
 
