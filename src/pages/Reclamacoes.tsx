@@ -48,6 +48,7 @@ import { Search, Archive, RotateCcw, Eye, Trash2, Filter, ArrowUp, ArrowDown, Ar
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
 import { useFieldOptions } from "@/hooks/useFieldOptions";
+import { usePeriodFilter, PeriodFilter } from "@/hooks/usePeriodFilter";
 
 type Reclamacao = Tables<"reclamacoes">;
 
@@ -58,6 +59,7 @@ type SortConfig = {
 
 export default function Reclamacoes() {
   const [search, setSearch] = useState("");
+  const { period, setPeriod, currentYear, periodLabel, inRange } = usePeriodFilter();
   const [selectedReclamacao, setSelectedReclamacao] = useState<Reclamacao | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -327,8 +329,9 @@ export default function Reclamacoes() {
   const conclusoesUnicas = [...new Set([...conclusaoOptions, ...reclamacoes.map(r => r.conclusao).filter(Boolean) as string[]])];
   const equipesUnicas = [...new Set([...equipeOptions, ...reclamacoes.map(r => r.equipe_responsavel).filter(Boolean) as string[]])];
 
-  const ativas = reclamacoes.filter(r => !r.arquivada);
-  const respondidas = reclamacoes.filter(r => r.arquivada);
+  const reclamacoesNoPeriodo = reclamacoes.filter(r => inRange(r.prazo ?? r.created_at));
+  const ativas = reclamacoesNoPeriodo.filter(r => !r.arquivada);
+  const respondidas = reclamacoesNoPeriodo.filter(r => r.arquivada);
 
   // Find duplicate nota_rc, nota_fs, and instalacao values
   const getDuplicateKeys = (list: Reclamacao[]) => {
@@ -647,11 +650,17 @@ export default function Reclamacoes() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Reclamações</h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie todas as reclamações do sistema • Clique em qualquer célula para editar
+            <p className="text-muted-foreground mt-1 capitalize">
+              {periodLabel} • Clique em qualquer célula para editar
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <PeriodFilter
+              period={period}
+              onChange={setPeriod}
+              currentYear={currentYear}
+              className="w-full sm:w-56"
+            />
             {selectedIds.size > 0 && (
               <>
                 <Button
