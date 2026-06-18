@@ -45,6 +45,16 @@ import { toast } from "@/hooks/use-toast";
 import { format, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Search, Archive, RotateCcw, Eye, CheckCircle, AlertCircle, Trash2, Filter, ArrowUp, ArrowDown, ArrowUpDown, GripVertical } from "lucide-react";
+import { Download } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportToXlsx, formatDateBR, type ExportScope } from "@/lib/exportSheet";
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
 import { useFieldOptions } from "@/hooks/useFieldOptions";
@@ -305,6 +315,39 @@ export default function APCLPage() {
   const apclsNoPeriodo = apcls.filter(a => inRange(a.prazo_resposta ?? a.created_at));
   const ativas = apclsNoPeriodo.filter(a => !a.arquivada);
   const respondidas = apclsNoPeriodo.filter(a => a.arquivada);
+
+  const handleExport = (scope: ExportScope) => {
+    const map: Record<ExportScope, APCL[]> = {
+      ativas,
+      respondidas,
+      todas: apclsNoPeriodo,
+    };
+    const rows = map[scope];
+    if (rows.length === 0) {
+      toast({ title: "Nada para exportar", description: "Não há APCLs nesse filtro." });
+      return;
+    }
+    exportToXlsx<APCL>(
+      rows,
+      [
+        { key: "origem", header: "Origem" },
+        { key: "cod", header: "Cod" },
+        { key: "nota_av", header: "Nota AV" },
+        { key: "nota_fs", header: "Nota FS" },
+        { key: "unidade_consumidora", header: "UC" },
+        { key: "prazo_resposta", header: "Prazo Resposta", format: formatDateBR },
+        { key: "data_visita", header: "Data Visita", format: formatDateBR },
+        { key: "cidade", header: "Cidade" },
+        { key: "conclusao", header: "Conclusão" },
+        { key: "resolucao", header: "Resolução" },
+        { key: "equipe", header: "Equipe" },
+        { key: "observacoes", header: "Observações" },
+        { key: "arquivada", header: "Status", format: v => (v ? "Respondida" : "Ativa") },
+      ],
+      `apcl-${scope}-${periodLabel.replace(/\s+/g, "_")}.xlsx`,
+      "APCL",
+    );
+  };
 
   // Find duplicate nota_av, nota_fs, and unidade_consumidora values
   const getDuplicateKeys = (list: APCL[]) => {
@@ -664,6 +707,27 @@ export default function APCLPage() {
               currentYear={currentYear}
               className="w-full sm:w-56"
             />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Exportar planilha</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleExport("ativas")}>
+                  Apenas ativas ({ativas.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("respondidas")}>
+                  Apenas respondidas ({respondidas.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("todas")}>
+                  Ativas e respondidas ({apclsNoPeriodo.length})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {selectedIds.size > 0 && (
               <>
                 <Button
