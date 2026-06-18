@@ -38,16 +38,23 @@ export function DashboardSummary({ reclamacoes, apcls, title = "Resumo" }: Dashb
   }).length;
   const apclTratadas = apclMes.length > 0 ? Math.round((apclTratadasCount / apclMes.length) * 100) : 0;
 
-  // % Procedentes: resolucao === "Procedente"
-  const recProcedenteCount = recMes.filter(r => 
+  // % Procedentes: base apenas em itens que já têm resolução preenchida,
+  // para refletir mudanças mesmo quando o total é grande.
+  const recComResolucao = recMes.filter(r => r.resolucao);
+  const recProcedenteCount = recComResolucao.filter(r =>
     r.resolucao?.toLowerCase() === "procedente"
   ).length;
-  const recProcedentes = recMes.length > 0 ? Math.round((recProcedenteCount / recMes.length) * 100) : 0;
+  const recProcedentes = recComResolucao.length > 0
+    ? Math.round((recProcedenteCount / recComResolucao.length) * 100)
+    : 0;
 
-  const apclProcedenteCount = apclMes.filter(a => 
+  const apclComResolucao = apclMes.filter(a => a.resolucao);
+  const apclProcedenteCount = apclComResolucao.filter(a =>
     a.resolucao?.toLowerCase() === "procedente"
   ).length;
-  const apclProcedentes = apclMes.length > 0 ? Math.round((apclProcedenteCount / apclMes.length) * 100) : 0;
+  const apclProcedentes = apclComResolucao.length > 0
+    ? Math.round((apclProcedenteCount / apclComResolucao.length) * 100)
+    : 0;
 
   const rows = [
     { label: "Cod 100", recValue: recCod100.toString(), apclValue: apclCod100.toString() },
