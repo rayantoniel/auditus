@@ -45,6 +45,16 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Search, Archive, RotateCcw, Eye, Trash2, Filter, ArrowUp, ArrowDown, ArrowUpDown, GripVertical } from "lucide-react";
+import { Download } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportToXlsx, formatDateBR, type ExportScope } from "@/lib/exportSheet";
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
 import { useFieldOptions } from "@/hooks/useFieldOptions";
@@ -332,6 +342,40 @@ export default function Reclamacoes() {
   const reclamacoesNoPeriodo = reclamacoes.filter(r => inRange(r.prazo ?? r.created_at));
   const ativas = reclamacoesNoPeriodo.filter(r => !r.arquivada);
   const respondidas = reclamacoesNoPeriodo.filter(r => r.arquivada);
+
+  const handleExport = (scope: ExportScope) => {
+    const map: Record<ExportScope, Reclamacao[]> = {
+      ativas,
+      respondidas,
+      todas: reclamacoesNoPeriodo,
+    };
+    const rows = map[scope];
+    if (rows.length === 0) {
+      toast({ title: "Nada para exportar", description: "Não há reclamações nesse filtro." });
+      return;
+    }
+    exportToXlsx<Reclamacao>(
+      rows,
+      [
+        { key: "cod", header: "Cod" },
+        { key: "nota_rc", header: "Nota RC" },
+        { key: "nota_fs", header: "Nota FS" },
+        { key: "instalacao", header: "Instalação" },
+        { key: "prazo", header: "Prazo", format: formatDateBR },
+        { key: "cidade", header: "Cidade" },
+        { key: "tipo_reclamacao", header: "Tipo" },
+        { key: "conclusao", header: "Conclusão" },
+        { key: "resolucao", header: "Resolução" },
+        { key: "respondido_em", header: "Respondido em", format: formatDateBR },
+        { key: "data_visita", header: "Data Visita", format: formatDateBR },
+        { key: "equipe_responsavel", header: "Equipe" },
+        { key: "observacoes", header: "Observações" },
+        { key: "arquivada", header: "Status", format: v => (v ? "Respondida" : "Ativa") },
+      ],
+      `reclamacoes-${scope}-${periodLabel.replace(/\s+/g, "_")}.xlsx`,
+      "Reclamações",
+    );
+  };
 
   // Find duplicate nota_rc, nota_fs, and instalacao values
   const getDuplicateKeys = (list: Reclamacao[]) => {
@@ -661,6 +705,27 @@ export default function Reclamacoes() {
               currentYear={currentYear}
               className="w-full sm:w-56"
             />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Exportar planilha</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleExport("ativas")}>
+                  Apenas ativas ({ativas.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("respondidas")}>
+                  Apenas respondidas ({respondidas.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("todas")}>
+                  Ativas e respondidas ({reclamacoesNoPeriodo.length})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {selectedIds.size > 0 && (
               <>
                 <Button
