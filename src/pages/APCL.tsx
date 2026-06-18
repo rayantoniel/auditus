@@ -48,6 +48,7 @@ import { Search, Archive, RotateCcw, Eye, CheckCircle, AlertCircle, Trash2, Filt
 import { Tables } from "@/integrations/supabase/types";
 import { EditableCell } from "@/components/table/EditableCell";
 import { useFieldOptions } from "@/hooks/useFieldOptions";
+import { usePeriodFilter, PeriodFilter } from "@/hooks/usePeriodFilter";
 
 type APCL = Tables<"apcl">;
 
@@ -58,6 +59,7 @@ type SortConfig = {
 
 export default function APCLPage() {
   const [search, setSearch] = useState("");
+  const { period, setPeriod, currentYear, periodLabel, inRange } = usePeriodFilter();
   const [selectedAPCL, setSelectedAPCL] = useState<APCL | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -300,8 +302,9 @@ export default function APCLPage() {
   const conclusoesUnicas = [...new Set([...conclusaoOptions, ...apcls.map(a => a.conclusao).filter(Boolean) as string[]])];
   const equipesUnicas = [...new Set([...equipeOptions, ...apcls.map(a => a.equipe).filter(Boolean) as string[]])];
 
-  const ativas = apcls.filter(a => !a.arquivada);
-  const respondidas = apcls.filter(a => a.arquivada);
+  const apclsNoPeriodo = apcls.filter(a => inRange(a.prazo_resposta ?? a.created_at));
+  const ativas = apclsNoPeriodo.filter(a => !a.arquivada);
+  const respondidas = apclsNoPeriodo.filter(a => a.arquivada);
 
   // Find duplicate nota_av, nota_fs, and unidade_consumidora values
   const getDuplicateKeys = (list: APCL[]) => {
@@ -650,11 +653,17 @@ export default function APCLPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">APCL - Ouvidorias</h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie as ouvidorias APCL • Clique em qualquer célula para editar
+            <p className="text-muted-foreground mt-1 capitalize">
+              {periodLabel} • Clique em qualquer célula para editar
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <PeriodFilter
+              period={period}
+              onChange={setPeriod}
+              currentYear={currentYear}
+              className="w-full sm:w-56"
+            />
             {selectedIds.size > 0 && (
               <>
                 <Button
