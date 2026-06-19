@@ -1,13 +1,13 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface MonthlyResponsesChartProps {
-  data: { month: string; reclamacoes: number; apcl: number }[];
+  data: { month: string; apcl: number }[];
 }
 
 export function MonthlyResponsesChart({ data }: MonthlyResponsesChartProps) {
   return (
     <div className="stat-card h-80 animate-fade-in">
-      <h3 className="text-lg font-semibold text-foreground mb-4">Respondidas por Mês</h3>
+      <h3 className="text-lg font-semibold text-foreground mb-4">APCL Respondidas por Mês</h3>
       <ResponsiveContainer width="100%" height="85%">
         <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 32%, 91%)" />
@@ -30,13 +30,6 @@ export function MonthlyResponsesChart({ data }: MonthlyResponsesChartProps) {
               boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
             }}
             labelStyle={{ color: "hsl(222, 47%, 11%)", fontWeight: 600 }}
-          />
-          <Legend />
-          <Bar 
-            dataKey="reclamacoes" 
-            name="Reclamações"
-            fill="hsl(217, 91%, 50%)" 
-            radius={[4, 4, 0, 0]}
           />
           <Bar 
             dataKey="apcl" 
