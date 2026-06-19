@@ -76,7 +76,7 @@ export default function APCLPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [filterOrigem, setFilterOrigem] = useState<string>("all");
   const [filterConclusao, setFilterConclusao] = useState<string>("all");
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: "prazo_resposta", direction: "desc" });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: "data_visita", direction: "desc" });
   const queryClient = useQueryClient();
   const { values: origemOptions } = useFieldOptions("origem_apcl");
   const { values: conclusaoOptions } = useFieldOptions("conclusao_apcl");
@@ -88,7 +88,7 @@ export default function APCLPage() {
       const { data, error } = await supabase
         .from("apcl")
         .select("*")
-        .order("prazo_resposta", { ascending: false, nullsFirst: false });
+        .order("data_visita", { ascending: false, nullsFirst: false });
       
       if (error) throw error;
       return data;
