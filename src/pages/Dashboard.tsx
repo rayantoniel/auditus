@@ -188,17 +188,12 @@ export default function Dashboard() {
   }, [period, reclamacoes, apcls, rangeStart, rangeEnd, monthsOfYear]);
 
   const responsesByMonth = monthsOfYear.map(({ month, start, end }) => {
-    const reclamacoesCount = reclamacoes.filter(r => {
-      const date = parseLocalDate(r.respondido_em);
-      return date !== null && date >= start && date <= end;
-    }).length;
-
     const apclCount = apcls.filter(a => {
       const date = parseLocalDate(a.data_visita);
       return date !== null && date >= start && date <= end;
     }).length;
 
-    return { month, reclamacoes: reclamacoesCount, apcl: apclCount };
+    return { month, apcl: apclCount };
   });
 
   return (
