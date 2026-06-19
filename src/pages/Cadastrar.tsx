@@ -55,6 +55,7 @@ export default function Cadastrar() {
     nota_fs: "",
     unidade_consumidora: "",
     prazo_resposta: "",
+    data_visita: "",
     cidade: "",
     equipe: "",
     tratativa: "",
@@ -115,6 +116,7 @@ export default function Cadastrar() {
         nota_fs: apclForm.nota_fs ? parseInt(apclForm.nota_fs) : null,
         unidade_consumidora: apclForm.unidade_consumidora ? parseInt(apclForm.unidade_consumidora) : null,
         prazo_resposta: apclForm.prazo_resposta || null,
+        data_visita: apclForm.data_visita || null,
         cidade: apclForm.cidade || null,
         equipe: apclForm.equipe || null,
         tratativa: apclForm.tratativa || null,
@@ -136,6 +138,7 @@ export default function Cadastrar() {
         nota_fs: "",
         unidade_consumidora: "",
         prazo_resposta: "",
+        data_visita: "",
         cidade: "",
         equipe: "",
         tratativa: "",
@@ -449,6 +452,15 @@ export default function Cadastrar() {
                           placeholder="Nome da cidade"
                           value={apclForm.cidade}
                           onChange={(e) => setAPCLForm({ ...apclForm, cidade: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="data_visita_apcl">Data da Visita</Label>
+                        <Input
+                          id="data_visita_apcl"
+                          type="date"
+                          value={apclForm.data_visita}
+                          onChange={(e) => setAPCLForm({ ...apclForm, data_visita: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">

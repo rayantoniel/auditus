@@ -344,10 +344,13 @@ export default function Reclamacoes() {
   const respondidas = reclamacoesNoPeriodo.filter(r => r.arquivada);
 
   const handleExport = (scope: ExportScope) => {
+    // Aplica os filtros ativos (tipo, conclusão, busca) também na exportação.
+    const ativasFiltradas = filterReclamacoes(ativas);
+    const respondidasFiltradas = filterReclamacoes(respondidas);
     const map: Record<ExportScope, Reclamacao[]> = {
-      ativas,
-      respondidas,
-      todas: reclamacoesNoPeriodo,
+      ativas: ativasFiltradas,
+      respondidas: respondidasFiltradas,
+      todas: [...ativasFiltradas, ...respondidasFiltradas],
     };
     const rows = map[scope];
     if (rows.length === 0) {

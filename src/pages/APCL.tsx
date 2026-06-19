@@ -312,15 +312,18 @@ export default function APCLPage() {
   const conclusoesUnicas = [...new Set([...conclusaoOptions, ...apcls.map(a => a.conclusao).filter(Boolean) as string[]])];
   const equipesUnicas = [...new Set([...equipeOptions, ...apcls.map(a => a.equipe).filter(Boolean) as string[]])];
 
-  const apclsNoPeriodo = apcls.filter(a => inRange(a.prazo_resposta ?? a.created_at));
+  const apclsNoPeriodo = apcls.filter(a => inRange(a.data_visita ?? a.created_at));
   const ativas = apclsNoPeriodo.filter(a => !a.arquivada);
   const respondidas = apclsNoPeriodo.filter(a => a.arquivada);
 
   const handleExport = (scope: ExportScope) => {
+    // Aplica os filtros ativos (origem, conclusão, busca) também na exportação.
+    const ativasFiltradas = filterAPCL(ativas);
+    const respondidasFiltradas = filterAPCL(respondidas);
     const map: Record<ExportScope, APCL[]> = {
-      ativas,
-      respondidas,
-      todas: apclsNoPeriodo,
+      ativas: ativasFiltradas,
+      respondidas: respondidasFiltradas,
+      todas: [...ativasFiltradas, ...respondidasFiltradas],
     };
     const rows = map[scope];
     if (rows.length === 0) {

@@ -58,7 +58,7 @@ export default function Dashboard() {
     [reclamacoes, rangeStart, rangeEnd]
   );
   const apclsFiltradas = useMemo(
-    () => apcls.filter(a => inRange(a.prazo_resposta ?? a.created_at)),
+    () => apcls.filter(a => inRange(a.data_visita ?? a.created_at)),
     [apcls, rangeStart, rangeEnd]
   );
 
