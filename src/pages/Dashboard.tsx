@@ -165,11 +165,7 @@ export default function Dashboard() {
           const date = parseLocalDate(r.respondido_em);
           return date !== null && date >= start && date <= end;
         }).length;
-        const ap = apcls.filter(a => {
-          const date = parseLocalDate(a.data_visita);
-          return date !== null && date >= start && date <= end;
-        }).length;
-        return { date: month, count: rec + ap };
+        return { date: month, count: rec };
       });
     }
     const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
@@ -180,10 +176,7 @@ export default function Dashboard() {
         d.getMonth() === day.getMonth() &&
         d.getDate() === day.getDate();
       const rec = reclamacoes.filter(r => sameDay(parseLocalDate(r.respondido_em))).length;
-      const ap = apcls.filter(a => {
-        return sameDay(parseLocalDate(a.data_visita));
-      }).length;
-      return { date: format(day, "dd"), count: rec + ap };
+      return { date: format(day, "dd"), count: rec };
     });
   }, [period, reclamacoes, apcls, rangeStart, rangeEnd, monthsOfYear]);
 
